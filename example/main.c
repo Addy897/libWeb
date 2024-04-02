@@ -1,6 +1,13 @@
 #include "main.h"
+#include <stdlib.h>
+#include <string.h>
 char * indexH(Request * req){
-    return "<html><head><title>C</title></head><body>Hello From C</body></html>";
+    char content[]="<html><head><title>C</title></head><body>Hello From C</body></html>";
+    int n=strlen(content);
+    char * htmlResp=malloc(n);
+    strncpy(htmlResp,content,n);
+    htmlResp[n]='\0';
+    return htmlResp;
 }
 
 int main(int argc, char const *argv[])

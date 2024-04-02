@@ -18,17 +18,19 @@ void handleRequest(SOCKET c,Request *req) {
                 if(resp==NULL){
                     free(body);
                     perror("Error sending data: ");
+                     printf("%s %s 404\n",req->method,req->path);
                     return;
                 }
                 HTMLResponse(resp,body);
                 int bytes_sent=send(c,resp,strlen(resp),0);
                 if (bytes_sent == -1) {
                     perror("Error sending data: ");
+                     
                     
                 }
                 free(resp);
                 free(body);
-                
+                printf("%s %s 200\n",req->method,req->path);
                return;
                 
             }
