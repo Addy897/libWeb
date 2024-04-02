@@ -2,9 +2,13 @@
 Micro web framework written in C for windows
 
 # compile
-  ## libWeb
-    `make`
-  ## example
-    `make example`
+## libWeb
+  ```bash
+  make
+  ```
+## example
+  ```bash
+  make example
+  ```
 
 
