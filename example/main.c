@@ -1,11 +1,8 @@
 #include "main.h"
 char * indexH(Request * req){
-    return render_template("./app/index.html");
+    return "<html><head><title>C</title></head><body>Hello From C</body></html>";
 }
-char * aboutH(Request * req){
-    return  render_template("./app/about.html");
-   
-}
+
 int main(int argc, char const *argv[])
 {
     
@@ -16,9 +13,7 @@ int main(int argc, char const *argv[])
     }
     char path[100];
    
-    setStaticPath("./app");
     addRoute("/",indexH);
-    addRoute("/about",aboutH);
     startServer("0.0.0.0",6969);
     cleanupRoutes();
 
