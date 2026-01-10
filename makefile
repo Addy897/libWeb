@@ -1,4 +1,3 @@
-
 mimeTypes = mimeTypes.o
 routing = routing.o
 parser = parser.o
@@ -10,16 +9,11 @@ CC = gcc
 ex_main= main.c
 out= out
 
-ifeq ($(OS),Windows_NT)
-	CFLAGS = -lws2_32 -I"./include/"
-	ex_CFLAGS= -l:../$(out)/libWeb.a -L$(out) -lws2_32
-	ex_EXEC= main.exe
-	Delete= del /s *.o 
-else
-	CFLAGS = -I"./include/"
-	ex_EXEC= main
-	ex_CFLAGS= -l:$(out)/libWeb.a -L".$(out)/"
-endif
+CFLAGS = -lws2_32 -I"./include/" -ggdb 
+ex_CFLAGS= -l:../$(out)/libWeb.a -L$(out) -lws2_32 -ggdb
+
+ex_EXEC= main.exe
+Delete= rm *.o 
 
 all: $(LIB)
 $(mimeTypes): mimeTypes.c
