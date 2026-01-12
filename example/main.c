@@ -1,16 +1,7 @@
 #include "main.h"
-#include <stdlib.h>
-#include <string.h>
-char *indexH(Request *req, Response *res) {
-  char content[] =
-      "<html><head><title>C</title></head><body>Hello From C</body></html>";
-  int n = strlen(content);
-  char *htmlResp = malloc(n);
-  strncpy(htmlResp, content, n);
-  htmlResp[n] = '\0';
-  return htmlResp;
+void indexH(Request *req, Response *res) {
+  setBodyFromFile("./public/index.html", res);
 }
-
 int main(int argc, char const *argv[]) {
 
   int init = initializeSocket();
@@ -19,7 +10,7 @@ int main(int argc, char const *argv[]) {
     return -1;
   }
   char path[100];
-
+  setStaticPath("./public");
   addRoute("/", indexH);
   startServer("0.0.0.0", 6969);
   cleanupRoutes();
