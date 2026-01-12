@@ -1,25 +1,30 @@
 #include "include/routing.h"
+#include "include/request.h"
+#include <stdio.h>
 
 HashTable *routes = NULL;
 void initRoutes() {
   if (routes == NULL)
     routes = initTable(MAX_ROUTES);
 }
-Route *hasRoute(char *path) {
+Route *hasRoute(Method method, char *path) {
   if (routes == NULL)
     return NULL;
-  Route *current_route = (Route *)get(path, routes);
+  char key[1024];
+  snprintf(key, 1024, "%s %s", methods[method], path);
+
+  Route *current_route = (Route *)get(key, routes);
   return current_route;
 }
-void addRoute(char *path, void (*callback)(Request *, Response *)) {
+void addRoute(Method method, char *path,
+              void (*callback)(Request *, Response *)) {
   if (routes == NULL) {
     initRoutes();
   }
-  Route new_route = {.callback = callback};
-  if (strlen(path) < MAX_PATH_LENGTH - 1) {
-    strcpy(new_route.path, path);
-  }
-  add(path, &new_route, sizeof(new_route), routes);
+  Route new_route = {.method = method, .callback = callback};
+  char key[1024];
+  snprintf(key, 1024, "%s %s", methods[method], path);
+  add(key, &new_route, sizeof(new_route), routes);
 }
 
 void cleanupRoutes() {

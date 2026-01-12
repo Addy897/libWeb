@@ -24,12 +24,12 @@ int sendResponse(SOCKET *client, Response *response);
 
 Response *initResponse();
 void setStatus(int status, Response *response);
-void addHeader(char *name, char *value, Response *response);
-void removeHeader(char *name, Response *response);
+void addHeader(char *name, char *value, HashTable *headers);
+void removeHeader(char *name, HashTable *headers);
 
-const char *getHeader(char *name, Response *response);
-char *getAllHeaders(Response *response);
-void setBody(char *body, Response *);
+const char *getHeader(char *name, HashTable *headers);
+char *getAllHeaders(HashTable *headers);
+void setResponseBody(char *body, Response *);
 
 void setBodyFromFile(char *pathname, Response *res);
 

@@ -1,5 +1,6 @@
 #include "include/setupServer.h"
-#include "include/httpResponse.h"
+#include "include/request.h"
+#include "include/response.h"
 #include "include/routing.h"
 void handleRequest(SOCKET c, Request *req) {
   char not_found[] = "<html>"
@@ -8,28 +9,28 @@ void handleRequest(SOCKET c, Request *req) {
                      "</head>"
                      "<body>404 NOT FOUND!!</body>"
                      "</html>";
-
+  const char *method = methods[req->method];
   if (exists(req->path)) {
 
     int result = sendFile(c, req->path);
 
     if (!result) {
-      printf("%s %s 404\n", req->method, req->path);
+      printf("%s %s 404\n", method, req->path);
       return;
     }
-    printf("%s %s 200\n", req->method, req->path);
+    printf("%s %s 200\n", method, req->path);
   } else {
     Response *response = initResponse();
-    addHeader("Content-Type", "text/html", response);
-    const char *header = getHeader("Content-Type", response);
-    Route *current_route = hasRoute(req->path);
+    addHeader("Content-Type", "text/html", response->headers);
+    const char *header = getHeader("Content-Type", response->headers);
+    Route *current_route = hasRoute(req->method, req->path);
     if (current_route != NULL) {
       current_route->callback(req, response);
-      printf("%s %s 200\n", req->method, req->path);
+      printf("%s %s 200\n", method, req->path);
     } else {
       setStatus(404, response);
-      setBody(not_found, response);
-      printf("%s %s 404\n", req->method, req->path);
+      setResponseBody(not_found, response);
+      printf("%s %s 404\n", method, req->path);
     }
 
     if (sendResponse(&c, response) < 0) {
@@ -43,18 +44,6 @@ void handleRequest(SOCKET c, Request *req) {
 void handleExit(int signum) {
   cleanupRoutes();
   exit(signum);
-}
-int _startServer(SOCKET server, SOCKET c, SOCKADDR_IN *caddr) {
-  char *str = inet_ntoa(caddr->sin_addr);
-
-  char recvbuf[1024];
-  int recvbuflen = 1024;
-  int res = recv(c, recvbuf, recvbuflen, 0);
-  if (res > 0) {
-    Request req;
-    parseRequest(recvbuf, &req);
-  }
-  return 0;
 }
 int initializeSocket() {
   signal(SIGINT, handleExit);
@@ -88,18 +77,13 @@ int initializeSocket() {
 void handleClient(LPVOID lpParam) {
 
   SOCKET client = (SOCKET)lpParam;
-  char buff[BUFF_SIZE];
+  Request *req = initRequest();
 
-  int result = recv(client, buff, BUFF_SIZE, 0);
-  if (result < 0) {
-    closesocket(client);
-    return;
-  }
-  Request req;
-  if (parseRequest(buff, &req)) {
-    handleRequest(client, &req);
+  if (buildRequest(client, req)) {
+    handleRequest(client, req);
   }
   closesocket(client);
+  freeRequest(&req);
 }
 
 void startServer(char *addr, int port) {

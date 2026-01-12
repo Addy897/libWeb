@@ -1,9 +1,9 @@
 mimeTypes = mimeTypes.o
 routing = routing.o
-parser = parser.o
+request = request.o
 helper = helper.o
 setupServer = setupServer.o
-httpResponse = httpResponse.o
+response = response.o
 hash_table = hash_table.o
 
 LIB = libWeb.a
@@ -20,12 +20,12 @@ Delete= rm *.o
 all: $(LIB)
 $(mimeTypes): mimeTypes.c
 	$(CC) $(CFLAGS) -c mimeTypes.c -o $(mimeTypes)
-$(httpResponse): httpResponse.c
-	$(CC) $(CFLAGS) -c httpResponse.c -o $(httpResponse)
+$(response): response.c
+	$(CC) $(CFLAGS) -c response.c -o $(response)
 $(setupServer): setupServer.c
 	$(CC) $(CFLAGS) -c setupServer.c -o $(setupServer)
-$(parser): parser.c
-	$(CC) $(CFLAGS) -c parser.c -o $(parser)
+$(request): request.c
+	$(CC) $(CFLAGS) -c request.c -o $(request)
 $(routing): routing.c
 	$(CC) $(CFLAGS) -c routing.c -o $(routing)
 $(helper): helper.c
@@ -35,8 +35,8 @@ $(hash_table): hash_table.c
 
 
 
-$(LIB): $(hash_table) $(mimeTypes) $(parser) $(helper) $(httpResponse) $(routing) $(setupServer) 
-	ld -relocatable $(hash_table) $(mimeTypes) $(parser) $(helper) $(httpResponse) $(routing)  $(setupServer) -o web.o
+$(LIB): $(hash_table) $(mimeTypes) $(request) $(helper) $(response) $(routing) $(setupServer) 
+	ld -relocatable $(hash_table) $(mimeTypes) $(request) $(helper) $(response) $(routing)  $(setupServer) -o web.o
 	ar rcs $(out)/$(LIB) web.o
 	
 $(ex_EXEC): example/$(ex_main)

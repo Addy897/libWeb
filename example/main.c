@@ -2,6 +2,14 @@
 void indexH(Request *req, Response *res) {
   setBodyFromFile("./public/index.html", res);
 }
+void indexPost(Request *req, Response *res) {
+  if (req->body != nullptr && *(req->body) != '\0') {
+    setResponseBody(req->body, res);
+  } else {
+    setResponseBody("{\"result\":\"Data\"}", res);
+  }
+  addHeader("Content-Type", "application/json", res->headers);
+}
 int main(int argc, char const *argv[]) {
 
   int init = initializeSocket();
@@ -11,7 +19,8 @@ int main(int argc, char const *argv[]) {
   }
   char path[100];
   setPublicDir("./public");
-  addRoute("/", indexH);
+  addRoute(GET, "/", indexH);
+  addRoute(POST, "/", indexPost);
   startServer("0.0.0.0", 6969);
   cleanupRoutes();
 }

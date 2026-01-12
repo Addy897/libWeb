@@ -1,4 +1,5 @@
-#include "include/httpResponse.h"
+#include "include/response.h"
+#include "include/hash_table.h"
 #include "include/helper.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,33 +21,27 @@ void setStatus(int status, Response *response) {
   }
 }
 
-void addHeader(char *name, char *value, Response *response) {
-  if (response == NULL)
+void addHeader(char *name, char *value, HashTable *headers) {
+  if (headers == NULL)
     return;
-  if (response->headers == NULL)
-    return;
-  add(name, value, strlen(value) + 1, response->headers);
+  add(name, value, strlen(value) + 1, headers);
 }
-void removeHeader(char *name, Response *response) {
-  if (response == NULL)
+void removeHeader(char *name, HashTable *headers) {
+  if (headers == NULL)
     return;
-  if (response->headers == NULL)
-    return;
-  removeKey(name, response->headers);
+  removeKey(name, headers);
 }
-const char *getHeader(char *name, Response *response) {
-  if (response == NULL)
+const char *getHeader(char *name, HashTable *headers) {
+  if (headers == NULL)
     return NULL;
-  if (response->headers == NULL)
-    return NULL;
-  return getAsString(name, response->headers);
+  return getAsString(name, headers);
 }
-char *getAllHeaders(Response *res) {
+char *getAllHeaders(HashTable *headers) {
   int full_headers_size = 256;
-  char *headers = malloc(sizeof(char) * full_headers_size);
+  char *headers_str = malloc(sizeof(char) * full_headers_size);
   int it = 0;
-  for (int i = 0; i < res->headers->capacity; i++) {
-    HashEntry *current = res->headers->entries[i];
+  for (int i = 0; i < headers->capacity; i++) {
+    HashEntry *current = headers->entries[i];
     while (current != NULL) {
       HashEntry *temp = current;
       current = current->next;
@@ -55,21 +50,21 @@ char *getAllHeaders(Response *res) {
       int final_len = key_len + val_len + 3; //':' + ' ' + '\n' + '\0?'
       if (it + final_len >= full_headers_size) {
         full_headers_size *= 2;
-        headers = realloc(headers, sizeof(char) * full_headers_size);
+        headers_str = realloc(headers_str, sizeof(char) * full_headers_size);
       }
-      sprintf(headers + it, "%s: %s\n", temp->key, (char *)temp->value);
+      sprintf(headers_str + it, "%s: %s\n", temp->key, (char *)temp->value);
       it += final_len;
     }
   }
-  return headers;
+  return headers_str;
 }
-void setBody(char *body, Response *res) { res->body = strdup(body); }
+void setResponseBody(char *body, Response *res) { res->body = strdup(body); }
 char *responseToString(Response *res) {
   int max_len = 1024;
   char *data = malloc(max_len);
   sprintf(data, "HTTP/1.0 %d %s\n", res->status.code, res->status.message);
   int current_len = strlen(data);
-  char *full_headers = getAllHeaders(res);
+  char *full_headers = getAllHeaders(res->headers);
   int headers_len = strlen(full_headers);
   int body_len = res->body == NULL ? 0 : strlen(res->body);
   if (current_len + headers_len + body_len >= max_len) {
@@ -142,10 +137,10 @@ int sendFile(SOCKET client, char *filepath) {
   rewind(fptr);
   char *mime = getMiME(filepath);
   Response *res = initResponse();
-  addHeader("Content-Type", mime, res);
+  addHeader("Content-Type", mime, res->headers);
   char s[32];
   itoa(size, s, 10);
-  addHeader("Content-Length", s, res);
+  addHeader("Content-Length", s, res->headers);
   char *d = responseToString(res);
   send(client, d, strlen(d), 0);
   free(d);

@@ -1,14 +1,28 @@
 #ifndef REQUEST_H
 #define REQUEST_H
-struct Request {
-    char method[10];
-    char path[100];
-    char version[20];
-    char headers[20][100];
-    int header_count;
-    char body[1024];
-    char query_params[20][100];
-    int query_param_count;
+#include "hash_table.h"
+#include <winsock2.h>
+typedef enum { GET = 0, POST = 1 } Method;
+static const char *methods[] = {
+    "GET",
+    "POST",
 };
-typedef struct Request Request;
+typedef struct {
+  Method method;
+  char *path;
+  char version[20];
+  HashTable *headers;
+  char *body;
+  int body_len;
+  HashTable *query_params;
+} Request;
+
+Request *initRequest();
+int setRequestHeaders(SOCKET client, Request *req);
+int setRequestBody(SOCKET c, Request *req, int total_size);
+
+const char *getParams(char *name, HashTable *params);
+extern const char *getHeader(char *name, HashTable *headers);
+int buildRequest(SOCKET c, Request *req);
+void freeRequest(Request **req);
 #endif

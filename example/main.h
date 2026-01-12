@@ -1,14 +1,16 @@
+typedef enum { GET, POST } Methods;
+
 struct HashTable;
-typedef struct Request {
-  char method[10];
-  char path[100];
+typedef struct {
+  Methods method;
+  char *path;
   char version[20];
-  char headers[20][100];
-  int header_count;
-  char body[1024];
-  char query_params[20][100];
-  int query_param_count;
+  char *body;
+  int body_len;
+  struct HashTable *headers;
+  struct HashTable *query_params;
 } Request;
+
 typedef struct {
   int code;
   const char *message;
@@ -22,12 +24,13 @@ typedef struct {
 int initializeSocket();
 void setPublicDir(char *path);
 void setBodyFromFile(char *pathname, Response *res);
-void addRoute(char *path, void (*callbackfunc)(Request *, Response *));
+void addRoute(Methods, char *path, void (*callbackfunc)(Request *, Response *));
 void startServer(char *addr, int port);
 void setStatus(int status, Response *response);
-void addHeader(char *name, char *value, Response *response);
-void removeHeader(char *name, Response *response);
-const char *getHeader(char *name, Response *response);
-char *getAllHeaders(Response *response);
-void setBody(char *body, Response *);
+void addHeader(char *name, char *value, struct HashTable *headers);
+void removeHeader(char *name, struct HashTable *headers);
+const char *getHeader(char *name, struct HashTable *headers);
+const char *getParams(char *name, struct HashTable *params);
+char *getAllHeaders(struct HashTable *headers);
+void setResponseBody(char *body, Response *);
 void cleanupRoutes();
