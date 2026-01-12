@@ -31,7 +31,7 @@ int setRequestHeaders(SOCKET client, Request *req) {
   if (!mid)
     return 0;
 
-  char *body = mid + sizeof(delim);
+  char *body = mid + sizeof(delim) - 1;
 
   mid[1] = '\0';
   line = strtok_r(buf, "\n", &saveptr);

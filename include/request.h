@@ -9,11 +9,11 @@ static const char *methods[] = {
 };
 typedef struct {
   Method method;
-  char *path;
-  char version[20];
-  HashTable *headers;
-  char *body;
+  char version[32];
   int body_len;
+  char *path;
+  char *body;
+  HashTable *headers;
   HashTable *query_params;
 } Request;
 

@@ -1,12 +1,12 @@
-typedef enum { GET, POST } Methods;
-
+typedef enum { GET = 0, POST = 1 } Method;
 struct HashTable;
+
 typedef struct {
-  Methods method;
-  char *path;
-  char version[20];
-  char *body;
+  Method method;
+  char version[32];
   int body_len;
+  char *path;
+  char *body;
   struct HashTable *headers;
   struct HashTable *query_params;
 } Request;
@@ -24,7 +24,8 @@ typedef struct {
 int initializeSocket();
 void setPublicDir(char *path);
 void setBodyFromFile(char *pathname, Response *res);
-void addRoute(Methods, char *path, void (*callbackfunc)(Request *, Response *));
+void addRoute(Method m, char *path,
+              void (*callbackfunc)(Request *, Response *));
 void startServer(char *addr, int port);
 void setStatus(int status, Response *response);
 void addHeader(char *name, char *value, struct HashTable *headers);

@@ -1,12 +1,13 @@
 #include "main.h"
+#include <stdio.h>
 void indexH(Request *req, Response *res) {
   setBodyFromFile("./public/index.html", res);
 }
 void indexPost(Request *req, Response *res) {
-  if (req->body != nullptr && *(req->body) != '\0') {
+  if (req->body_len > 0) {
     setResponseBody(req->body, res);
   } else {
-    setResponseBody("{\"result\":\"Data\"}", res);
+    setResponseBody("{\"result\":\"Sucess\"}", res);
   }
   addHeader("Content-Type", "application/json", res->headers);
 }
