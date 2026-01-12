@@ -1,6 +1,4 @@
 struct HashTable;
-extern int initializeSocket();
-extern void setStaticPath(char *path);
 typedef struct Request {
   char method[10];
   char path[100];
@@ -20,13 +18,16 @@ typedef struct {
   struct HashTable *headers;
   char *body;
 } Response;
-extern void setBodyFromFile(char *pathname, Response *res);
-extern void addRoute(char *path, void (*callbackfunc)(Request *, Response *));
-extern void startServer(char *addr, int port);
-extern void setStatus(int status, Response *response);
-extern void addHeader(char *name, char *value, Response *response);
-extern void removeHeader(char *name, Response *response);
-extern const char *getHeader(char *name, Response *response);
-extern char *getAllHeaders(Response *response);
-extern void setBody(char *body, Response *);
-extern void cleanupRoutes();
+
+int initializeSocket();
+void setPublicDir(char *path);
+void setBodyFromFile(char *pathname, Response *res);
+void addRoute(char *path, void (*callbackfunc)(Request *, Response *));
+void startServer(char *addr, int port);
+void setStatus(int status, Response *response);
+void addHeader(char *name, char *value, Response *response);
+void removeHeader(char *name, Response *response);
+const char *getHeader(char *name, Response *response);
+char *getAllHeaders(Response *response);
+void setBody(char *body, Response *);
+void cleanupRoutes();

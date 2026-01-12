@@ -1,12 +1,13 @@
 #include "include/setupServer.h"
 #include "include/httpResponse.h"
+#include "include/routing.h"
 void handleRequest(SOCKET c, Request *req) {
   char not_found[] = "<html>"
                      "<head>"
-                     "<title>Not Found<title/>"
-                     "<head/>"
-                     "<body>404 NOT FOUND!!<body/>"
-                     "<html/>";
+                     "<title>Not Found</title>"
+                     "</head>"
+                     "<body>404 NOT FOUND!!</body>"
+                     "</html>";
 
   if (exists(req->path)) {
 
@@ -18,42 +19,24 @@ void handleRequest(SOCKET c, Request *req) {
     }
     printf("%s %s 200\n", req->method, req->path);
   } else {
-    Response *response;
-    initResponse(&response);
+    Response *response = initResponse();
     addHeader("Content-Type", "text/html", response);
-    printf("%s\n", response->headers);
-    freeResponse(&response);
+    const char *header = getHeader("Content-Type", response);
     Route *current_route = hasRoute(req->path);
-    char *body = NULL;
     if (current_route != NULL) {
-      body = current_route->callback(req, response);
-    }
-    if (body == NULL) {
-      int n = strlen(not_found);
-      body = malloc(n + 1);
-      if (body == NULL)
-        return;
-      strcpy(body, not_found);
-      body[n] = '\0';
-    }
-    char *resp = (char *)malloc(strlen(body) + 100);
-    if (resp == NULL) {
-      free(body);
-      perror("Error sending data: ");
-      return;
-    }
-    HTMLResponse(resp, body);
-    int bytes_sent = send(c, resp, strlen(resp), 0);
-    if (bytes_sent == -1) {
-      perror("Error sending data: ");
-    }
-    free(resp);
-    free(body);
-    if (current_route != NULL) {
+      current_route->callback(req, response);
       printf("%s %s 200\n", req->method, req->path);
     } else {
+      setStatus(404, response);
+      setBody(not_found, response);
       printf("%s %s 404\n", req->method, req->path);
     }
+
+    if (sendResponse(&c, response) < 0) {
+      perror("Sending Error");
+    }
+
+    freeResponse(&response);
     return;
   }
 }
@@ -83,7 +66,7 @@ int initializeSocket() {
     return -1;
   }
 
-  setStaticPath("./static/");
+  setPublicDir("./static/");
 
   server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (server == INVALID_SOCKET) {
@@ -113,8 +96,9 @@ void handleClient(LPVOID lpParam) {
     return;
   }
   Request req;
-  parseRequest(buff, &req);
-  handleRequest(client, &req);
+  if (parseRequest(buff, &req)) {
+    handleRequest(client, &req);
+  }
   closesocket(client);
 }
 
@@ -143,7 +127,6 @@ void startServer(char *addr, int port) {
   SOCKET c;
   struct sockaddr_in caddr;
   int caddr_len = sizeof(caddr);
-
   while (1) {
     c = accept(server, (SOCKADDR *)&caddr, &caddr_len);
     if (c == INVALID_SOCKET) {

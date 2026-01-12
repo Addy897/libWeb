@@ -10,7 +10,7 @@ int main(int argc, char const *argv[]) {
     return -1;
   }
   char path[100];
-  setStaticPath("./public");
+  setPublicDir("./public");
   addRoute("/", indexH);
   startServer("0.0.0.0", 6969);
   cleanupRoutes();

@@ -4,6 +4,8 @@ parser = parser.o
 helper = helper.o
 setupServer = setupServer.o
 httpResponse = httpResponse.o
+hash_table = hash_table.o
+
 LIB = libWeb.a
 CC = gcc
 ex_main= main.c
@@ -28,10 +30,13 @@ $(routing): routing.c
 	$(CC) $(CFLAGS) -c routing.c -o $(routing)
 $(helper): helper.c
 	$(CC) $(CFLAGS) -c helper.c -o $(helper)
+$(hash_table): hash_table.c
+	$(CC) $(CFLAGS) -c hash_table.c -o $(hash_table)
 
 
-$(LIB): $(mimeTypes) $(parser) $(helper) $(httpResponse) $(routing) $(setupServer)
-	ld -relocatable $(mimeTypes) $(parser) $(helper) $(httpResponse) $(routing)  $(setupServer) -o web.o
+
+$(LIB): $(hash_table) $(mimeTypes) $(parser) $(helper) $(httpResponse) $(routing) $(setupServer) 
+	ld -relocatable $(hash_table) $(mimeTypes) $(parser) $(helper) $(httpResponse) $(routing)  $(setupServer) -o web.o
 	ar rcs $(out)/$(LIB) web.o
 	
 $(ex_EXEC): example/$(ex_main)

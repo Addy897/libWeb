@@ -1,43 +1,91 @@
 #include "include/httpResponse.h"
+#include "include/helper.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-void HTTPResponse(char *body, char *resp, int size, char *type) {
-  sprintf(resp, "HTTP/1.1 200 OK\nContent-Type: %s\nContent-Length: %d\n\n%s",
-          type, size, body);
+
+Response *initResponse() {
+  Response *response = malloc(sizeof(Response));
+  (response)->status = StatusCodes[0];
+  (response)->body = nullptr;
+  (response)->headers = initTable(16);
+  return response;
 }
-void HTMLResponse(char *response, char *body) {
-  sprintf(response,
-          "HTTP/1.1 200 OK\nContent-Type: text/html\nContent-Length: %d\n\n%s",
-          (int)strlen(body), body);
+void setStatus(int status, Response *response) {
+  for (int i = 0; i < STATUS_COUNT; i++) {
+    if (status == StatusCodes[i].code) {
+      response->status = StatusCodes[i];
+      break;
+    }
+  }
 }
-void initResponse(Response **response) {
-  *response = malloc(sizeof(Response));
-  (*response)->body = nullptr;
-  (*response)->headers = nullptr;
-}
+
 void addHeader(char *name, char *value, Response *response) {
   if (response == NULL)
     return;
-  int name_len = strlen(name);
-  int value_len = strlen(value);
-  int header_len = name_len + value_len + 3; // : + " " + "\n"
-  int current_headers_len = 0;
-  if (response->headers == nullptr) {
-    current_headers_len = 0;
-    response->headers = (char *)malloc(header_len);
-    memset(response->headers, 0, header_len);
-  } else {
-    current_headers_len = strlen(response->headers);
-    response->headers =
-        realloc(response->headers, header_len + current_headers_len);
+  if (response->headers == NULL)
+    return;
+  add(name, value, strlen(value) + 1, response->headers);
+}
+void removeHeader(char *name, Response *response) {
+  if (response == NULL)
+    return;
+  if (response->headers == NULL)
+    return;
+  removeKey(name, response->headers);
+}
+const char *getHeader(char *name, Response *response) {
+  if (response == NULL)
+    return NULL;
+  if (response->headers == NULL)
+    return NULL;
+  return getAsString(name, response->headers);
+}
+char *getAllHeaders(Response *res) {
+  int full_headers_size = 256;
+  char *headers = malloc(sizeof(char) * full_headers_size);
+  int it = 0;
+  for (int i = 0; i < res->headers->capacity; i++) {
+    HashEntry *current = res->headers->entries[i];
+    while (current != NULL) {
+      HashEntry *temp = current;
+      current = current->next;
+      int key_len = strlen(temp->key);
+      int val_len = strlen(temp->value);
+      int final_len = key_len + val_len + 3; //':' + ' ' + '\n' + '\0?'
+      if (it + final_len >= full_headers_size) {
+        full_headers_size *= 2;
+        headers = realloc(headers, sizeof(char) * full_headers_size);
+      }
+      sprintf(headers + it, "%s: %s\n", temp->key, (char *)temp->value);
+      it += final_len;
+    }
   }
-  strncat(response->headers, name, name_len);
-  current_headers_len += name_len;
-  response->headers[current_headers_len++] = ':';
-  response->headers[current_headers_len++] = ' ';
-  strncat(response->headers, value, value_len);
-  current_headers_len += value_len;
-  response->headers[current_headers_len] = '\0';
+  return headers;
+}
+void setBody(char *body, Response *res) { res->body = strdup(body); }
+char *responseToString(Response *res) {
+  int max_len = 1024;
+  char *data = malloc(max_len);
+  sprintf(data, "HTTP/1.0 %d %s\n", res->status.code, res->status.message);
+  int current_len = strlen(data);
+  char *full_headers = getAllHeaders(res);
+  int headers_len = strlen(full_headers);
+  int body_len = res->body == NULL ? 0 : strlen(res->body);
+  if (current_len + headers_len + body_len >= max_len) {
+    max_len = max_len + (current_len + headers_len + body_len - max_len);
+    data = realloc(data, max_len);
+  }
+  if (res->body != NULL)
+    sprintf(data + current_len, "%s\n%s", full_headers, res->body);
+  else
+    sprintf(data + current_len, "%s\n", full_headers);
+  free(full_headers);
+  return data;
+}
+int sendResponse(SOCKET *c, Response *res) {
+  char *data = responseToString(res);
+  return send(*c, data, strlen(data), 0);
 }
 void freeResponse(Response **response) {
   if (response == NULL)
@@ -45,69 +93,67 @@ void freeResponse(Response **response) {
   if ((*response)->body != nullptr)
     free((*response)->body);
   if ((*response)->headers != nullptr)
-    free((*response)->headers);
+    freeTable(&(*response)->headers);
   free(*response);
   *response = NULL;
 }
-char *render_template(char *pathname) {
+void setBodyFromFile(char *pathname, Response *res) {
   FILE *file = fopen(pathname, "r");
   if (file != NULL) {
 
-    char *html_content = (char *)malloc(1);
-    if (html_content == NULL) {
+    res->body = (char *)malloc(1);
+    if (res->body == NULL) {
       fclose(file);
-      return NULL;
+      return;
     }
-    html_content[0] = '\0';
+    res->body[0] = '\0';
 
     char buffer[1024];
     size_t totalBytesRead = 0;
     size_t bytesRead;
     while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-      char *temp = realloc(html_content, totalBytesRead + bytesRead + 1);
+      char *temp = realloc(res->body, totalBytesRead + bytesRead + 1);
       if (temp == NULL) {
-        free(html_content);
+        free(res->body);
         fclose(file);
-        return NULL;
+        return;
       }
-      html_content = temp;
-      memcpy(html_content + totalBytesRead, buffer, bytesRead);
+      res->body = temp;
+      memcpy(res->body + totalBytesRead, buffer, bytesRead);
       totalBytesRead += bytesRead;
     }
-    html_content[totalBytesRead] = '\0';
+    res->body[totalBytesRead] = '\0';
     fclose(file);
-
-    return html_content;
   }
 }
 int sendFile(SOCKET client, char *filepath) {
   char WEB_PATH[256];
-  getStaticPath(WEB_PATH);
+  getPublicDir(WEB_PATH);
   strncat(WEB_PATH, filepath, strlen(filepath));
 
   char data[1024];
-  FILE *fptr = fopen(WEB_PATH, "r");
+  FILE *fptr = fopen(WEB_PATH, "rb");
   if (!fptr) {
     printf("Error no such file: %s\n", WEB_PATH);
     return 0;
   }
   fseek(fptr, 0L, SEEK_END);
   int size = ftell(fptr);
-  fclose(fptr);
-  char mime[30];
-  getMiME(filepath, mime);
-  char file[1024];
-  HTTPResponse("", file, size, mime);
-  send(client, file, strlen(file), 0);
-  int fp = open(WEB_PATH, O_RDONLY | O_BINARY);
-  if (!fp) {
-    printf("Error no such file: %s\n", WEB_PATH);
-    return 0;
-  }
+  rewind(fptr);
+  char *mime = getMiME(filepath);
+  Response *res = initResponse();
+  addHeader("Content-Type", mime, res);
+  char s[32];
+  itoa(size, s, 10);
+  addHeader("Content-Length", s, res);
+  char *d = responseToString(res);
+  send(client, d, strlen(d), 0);
+  free(d);
+  freeResponse(&res);
   size_t bytes_read;
   size_t total_sent = 0;
   char buffer[1024];
-  while ((bytes_read = read(fp, buffer, 1024)) > 0) {
+  while ((bytes_read = fread(buffer, sizeof(char), sizeof(buffer), fptr)) > 0) {
     size_t bytes_sent = send(client, buffer, bytes_read, 0);
     if (bytes_sent == -1) {
       perror("Error sending data");
@@ -118,7 +164,6 @@ int sendFile(SOCKET client, char *filepath) {
       break;
     }
   }
-  close(fp);
-
+  fclose(fptr);
   return 1;
 }

@@ -1,4 +1,5 @@
 *.o
+__pycache__
 app
 test.*
 .vscode

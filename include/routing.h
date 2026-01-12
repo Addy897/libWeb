@@ -1,5 +1,6 @@
 #ifndef ROUTING_H
 #define ROUTING_H
+#include "hash_table.h"
 #include "helper.h"
 #include "httpResponse.h"
 #include "request.h"
@@ -11,12 +12,11 @@
 #define MAX_ROUTES 100
 typedef struct Route {
   char path[MAX_PATH_LENGTH];
-  char *(*callback)(Request *, Response *);
-  struct Route *next;
+  void (*callback)(Request *, Response *);
 } Route;
 
-unsigned int hash(char *str);
-void addRoute(char *path, char *(*callbackfunc)(Request *, Response *));
+void initRoutes();
+void addRoute(char *path, void (*callbackfunc)(Request *, Response *));
 Route *hasRoute(char *path);
 void cleanupRoutes();
 
