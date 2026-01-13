@@ -14,7 +14,7 @@ void handleRequest(SOCKET c, Request *req) {
   const char *method = methods[req->method];
   if (exists(req->path)) {
 
-    int result = sendFile(c, req->path);
+    int result = sendFile(c, req->path, req->method);
 
     if (!result) {
       printf("%s %s 404\n", method, req->path);
@@ -31,12 +31,24 @@ void handleRequest(SOCKET c, Request *req) {
       current_route->callback(req, response);
       printf("%s %s 200\n", method, req->path);
     } else {
-      setStatus(404, response);
-      setResponseBody(not_found, response);
-      printf("%s %s 404\n", method, req->path);
+      if (req->method != HEAD) {
+        setStatus(404, response);
+        setResponseBody(not_found, response);
+        printf("%s %s 404\n", method, req->path);
+      } else {
+        current_route = hasRoute(GET, req->path);
+        if (current_route) {
+          current_route->callback(req, response);
+          printf("%s %s 200\n", method, req->path);
+        } else {
+          setStatus(404, response);
+          setResponseBody(not_found, response);
+          printf("%s %s 404\n", method, req->path);
+        }
+      }
     }
 
-    if (sendResponse(&c, response) < 0) {
+    if (sendResponse(&c, response, req->method) < 0) {
 
       perror("[handleRequest] Sending error");
     }

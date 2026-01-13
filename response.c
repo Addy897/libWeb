@@ -1,6 +1,7 @@
 #include "include/response.h"
 #include "include/hash_table.h"
 #include "include/helper.h"
+#include "include/request.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -64,7 +65,7 @@ char *getAllHeaders(HashTable *headers) {
   return headers_str;
 }
 void setResponseBody(char *body, Response *res) { res->body = strdup(body); }
-char *responseToString(int *total_len, Response *res) {
+char *responseToString(int *total_len, Response *res, Method m) {
   char status[128];
   sprintf(status, "HTTP/1.1 %d %s\r\n", res->status.code, res->status.message);
   int current_len = strlen(status);
@@ -87,7 +88,7 @@ char *responseToString(int *total_len, Response *res) {
   current_len += headers_len;
   memcpy(data + current_len, "\r\n", 2);
   current_len += 2;
-  if (body_len > 0) {
+  if (body_len > 0 && m != HEAD) {
     memcpy(data + current_len, res->body, body_len);
     current_len += body_len;
   }
@@ -95,9 +96,9 @@ char *responseToString(int *total_len, Response *res) {
   *total_len = current_len;
   return data;
 }
-int sendResponse(SOCKET *c, Response *res) {
+int sendResponse(SOCKET *c, Response *res, Method m) {
   int len = 0;
-  char *data = responseToString(&len, res);
+  char *data = responseToString(&len, res, m);
   int ret = send(*c, data, len, 0);
   if (ret < 0) {
     printf("[sendResponse] ret = %d\n", ret);
@@ -132,7 +133,7 @@ void setBodyFromFile(char *pathname, Response *res) {
   }
   fclose(file);
 }
-int sendFile(SOCKET client, char *filepath) {
+int sendFile(SOCKET client, char *filepath, Method m) {
   char WEB_PATH[256];
   getPublicDir(WEB_PATH);
   strncat(WEB_PATH, filepath, strlen(filepath));
@@ -153,10 +154,14 @@ int sendFile(SOCKET client, char *filepath) {
   snprintf(s, sizeof(s), "%d", size);
   addHeader("Content-Length", s, res->headers);
   int len = 0;
-  char *d = responseToString(&len, res);
+  char *d = responseToString(&len, res, m);
   send(client, d, len, 0);
   free(d);
   freeResponse(&res);
+  if (m == HEAD) {
+    fclose(fptr);
+    return 1;
+  }
   size_t bytes_read;
   size_t total_sent = 0;
   char buffer[65536];

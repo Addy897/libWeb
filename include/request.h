@@ -8,6 +8,8 @@ static const char *methods[] = {
     "POST",
     "HEAD",
 };
+
+#define METHODS_LEN sizeof(methods) / sizeof(methods[0])
 typedef struct {
   Method method;
   char version[32];

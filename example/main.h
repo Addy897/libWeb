@@ -1,5 +1,5 @@
 #define getParams(name, params) getHeader(name, params)
-typedef enum { GET = 0, POST = 1 } Method;
+typedef enum { GET = 0, POST = 1, HEAD = 2 } Method;
 struct HashTable;
 
 typedef struct {

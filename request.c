@@ -19,6 +19,7 @@ int setRequestHeaders(SOCKET client, Request *req) {
   if (req == NULL || client == 0)
     return 0;
   char buf[1024];
+  memset(buf, 0, 1024);
   int bytes_read = recv(client, buf, sizeof(buf), 0);
   if (bytes_read < 0)
     return 0;
@@ -48,11 +49,14 @@ int setRequestHeaders(SOCKET client, Request *req) {
   token = strtok(line, " ");
   if (token == NULL)
     return 0;
-  if (strcmp(token, "POST") == 0) {
-    req->method = POST;
-  } else {
-    req->method = GET;
+  req->method = -1;
+  for (int i = 0; i < METHODS_LEN; i++) {
+    if (strcmp(token, methods[i]) == 0) {
+      req->method = (Method)i;
+    }
   }
+  if (req->method == -1)
+    return 0;
   token = strtok(NULL, " ");
   if (token == NULL)
     return 0;
@@ -92,6 +96,7 @@ int setRequestHeaders(SOCKET client, Request *req) {
 }
 int setRequestBody(SOCKET c, Request *req, int total_size) {
   char body[1024];
+  memset(body, 0, 1024);
   while (req->body_len < total_size) {
     int bytes_read = recv(c, body, 1024, 0);
     if (bytes_read <= 0)

@@ -3,6 +3,7 @@
 #include "hash_table.h"
 #include "helper.h"
 #include "mimeTypes.h"
+#include "request.h"
 #include <WinSock2.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -19,8 +20,8 @@ typedef struct {
 static StatusCode StatusCodes[] = {{200, "OK"}, {404, "Not Found"}};
 #define STATUS_COUNT (sizeof(StatusCodes) / sizeof(StatusCode))
 
-int sendFile(SOCKET client, char *filepath);
-int sendResponse(SOCKET *client, Response *response);
+int sendFile(SOCKET client, char *filepath, Method m);
+int sendResponse(SOCKET *client, Response *response, Method method);
 
 Response *initResponse();
 void setStatus(int status, Response *response);
