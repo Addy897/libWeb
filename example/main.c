@@ -1,5 +1,4 @@
 #include "main.h"
-#include <stdio.h>
 void indexH(Request *req, Response *res) {
   setBodyFromFile("./public/index.html", res);
 }

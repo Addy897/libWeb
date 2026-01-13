@@ -1,3 +1,4 @@
+#define getParams(name, params) getHeader(name, params)
 typedef enum { GET = 0, POST = 1 } Method;
 struct HashTable;
 
@@ -31,7 +32,6 @@ void setStatus(int status, Response *response);
 void addHeader(char *name, char *value, struct HashTable *headers);
 void removeHeader(char *name, struct HashTable *headers);
 const char *getHeader(char *name, struct HashTable *headers);
-const char *getParams(char *name, struct HashTable *params);
 char *getAllHeaders(struct HashTable *headers);
 void setResponseBody(char *body, Response *);
 void cleanupRoutes();
