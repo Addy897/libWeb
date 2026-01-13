@@ -2,6 +2,7 @@
 #include "include/request.h"
 #include "include/response.h"
 #include "include/routing.h"
+#include <winsock2.h>
 void handleRequest(SOCKET c, Request *req) {
   char not_found[] = "<html>"
                      "<head>"
@@ -91,6 +92,10 @@ void startServer(char *addr, int port) {
   saddr.sin_family = AF_INET;
   saddr.sin_port = htons(port);
   saddr.sin_addr.s_addr = inet_addr(addr);
+  DWORD timeout_ms = 5000;
+
+  setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, (const char *)(&timeout_ms),
+             sizeof(timeout_ms));
 
   int res = bind(server, (SOCKADDR *)&saddr, sizeof(saddr));
   if (res != 0) {
@@ -122,7 +127,7 @@ void startServer(char *addr, int port) {
     HANDLE hndl = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)handleClient,
                                (LPVOID)c, 0, NULL);
     if (hndl == NULL) {
-      printf("Unable to accept socket: %d\n", WSAGetLastError());
+      printf("Unable to start thread: %d\n", WSAGetLastError());
       closesocket(c);
       closesocket(server);
       WSACleanup();
