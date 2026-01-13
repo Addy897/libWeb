@@ -2,6 +2,7 @@
 #include "include/request.h"
 #include "include/response.h"
 #include "include/routing.h"
+#include <winerror.h>
 #include <winsock2.h>
 void handleRequest(SOCKET c, Request *req) {
   char not_found[] = "<html>"
@@ -22,8 +23,9 @@ void handleRequest(SOCKET c, Request *req) {
     printf("%s %s 200\n", method, req->path);
   } else {
     Response *response = initResponse();
+    addHeader("Connection", "keep-alive", response->headers);
+    addHeader("Keep-Alive", "timeout=5, max=100", response->headers);
     addHeader("Content-Type", "text/html", response->headers);
-    const char *header = getHeader("Content-Type", response->headers);
     Route *current_route = hasRoute(req->method, req->path);
     if (current_route != NULL) {
       current_route->callback(req, response);
@@ -35,7 +37,8 @@ void handleRequest(SOCKET c, Request *req) {
     }
 
     if (sendResponse(&c, response) < 0) {
-      perror("Sending Error");
+
+      perror("[handleRequest] Sending error");
     }
 
     freeResponse(&response);
@@ -78,13 +81,24 @@ int initializeSocket() {
 void handleClient(LPVOID lpParam) {
 
   SOCKET client = (SOCKET)lpParam;
-  Request *req = initRequest();
+  DWORD timeout_ms = 5000;
 
-  if (buildRequest(client, req)) {
-    handleRequest(client, req);
+  setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, (const char *)(&timeout_ms),
+             sizeof(timeout_ms));
+
+  while (1) {
+    Request *req = initRequest();
+    int ret = buildRequest(client, req);
+    if (ret == 1) {
+      handleRequest(client, req);
+    } else {
+
+      freeRequest(&req);
+      break;
+    }
+    freeRequest(&req);
   }
   closesocket(client);
-  freeRequest(&req);
 }
 
 void startServer(char *addr, int port) {
@@ -92,11 +106,6 @@ void startServer(char *addr, int port) {
   saddr.sin_family = AF_INET;
   saddr.sin_port = htons(port);
   saddr.sin_addr.s_addr = inet_addr(addr);
-  DWORD timeout_ms = 5000;
-
-  setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, (const char *)(&timeout_ms),
-             sizeof(timeout_ms));
-
   int res = bind(server, (SOCKADDR *)&saddr, sizeof(saddr));
   if (res != 0) {
     printf("Unable to bind socket: %d\n", WSAGetLastError());

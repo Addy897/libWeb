@@ -2,10 +2,11 @@
 #define REQUEST_H
 #include "hash_table.h"
 #include <winsock2.h>
-typedef enum { GET = 0, POST = 1 } Method;
+typedef enum { GET = 0, POST = 1, HEAD = 2 } Method;
 static const char *methods[] = {
     "GET",
     "POST",
+    "HEAD",
 };
 typedef struct {
   Method method;

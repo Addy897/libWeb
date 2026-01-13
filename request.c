@@ -73,7 +73,7 @@ int setRequestHeaders(SOCKET client, Request *req) {
       char *key = strtok(query, "=");
       char *value = strtok(NULL, "");
       if (!key || !value)
-        return 0;
+        continue;
       add(key, value, strlen(value), req->query_params);
     }
   } else {
@@ -84,7 +84,7 @@ int setRequestHeaders(SOCKET client, Request *req) {
     char *key = strtok(line, ":");
     char *value = strtok(NULL, "");
     if (!key || !value)
-      return 0;
+      continue;
     add(key, value, strlen(value), req->headers);
   }
 
@@ -94,8 +94,8 @@ int setRequestBody(SOCKET c, Request *req, int total_size) {
   char body[1024];
   while (req->body_len < total_size) {
     int bytes_read = recv(c, body, 1024, 0);
-    if (bytes_read < 0)
-      return 0;
+    if (bytes_read <= 0)
+      return bytes_read;
     if (!req->body) {
       req->body = strdup(body);
       req->body_len = 0;
@@ -110,8 +110,9 @@ int setRequestBody(SOCKET c, Request *req, int total_size) {
 }
 
 int buildRequest(SOCKET c, Request *req) {
-  if (!setRequestHeaders(c, req)) {
-    return 0;
+  int ret;
+  if ((ret = setRequestHeaders(c, req)) <= 0) {
+    return ret;
   }
   const char *content_string = getAsString("Content-Length", req->headers);
   if (content_string) {
