@@ -10,5 +10,10 @@ Cross Platform Micro web framework written in C
   ```bash
   make example
   ```
+# Run Example
+ ```bash
+ cd example
+ ./main
+ ```
 
 
