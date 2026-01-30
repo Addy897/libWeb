@@ -4,7 +4,7 @@
 #include "helper.h"
 #include "mimeTypes.h"
 #include "request.h"
-#include <WinSock2.h>
+
 #include <fcntl.h>
 #include <stdio.h>
 typedef struct {

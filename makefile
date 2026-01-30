@@ -1,51 +1,36 @@
-mimeTypes = mimeTypes.o
-routing = routing.o
-request = request.o
-helper = helper.o
-setupServer = setupServer.o
-response = response.o
-hash_table = hash_table.o
+ifeq ($(OS),Windows_NT)
+    LIBS = -lws2_32
+    EXEC_EXT = .exe
+    RM = del /Q
+else
+    LIBS = -lpthread
+    EXEC_EXT =
+    RM = rm -f
+endif
+
+OBJS = mimeTypes.o routing.o request.o helper.o setupServer.o response.o hash_table.o
 
 LIB = libWeb.a
 CC = gcc
-ex_main= main.c
-out= out
+OUT_DIR = out
 
-CFLAGS = -lws2_32 -I"./include/" -ggdb 
-ex_CFLAGS= -l:../$(out)/libWeb.a -L$(out) -lws2_32 -ggdb
+CFLAGS = -I"./include/" -ggdb -pthread
+LIB_PATH = -L$(OUT_DIR) -lWeb
 
-ex_EXEC= main.exe
-Delete= rm *.o 
+all: $(OUT_DIR)/$(LIB)
 
-all: $(LIB)
-$(mimeTypes): mimeTypes.c
-	$(CC) $(CFLAGS) -c mimeTypes.c -o $(mimeTypes)
-$(response): response.c
-	$(CC) $(CFLAGS) -c response.c -o $(response)
-$(setupServer): setupServer.c
-	$(CC) $(CFLAGS) -c setupServer.c -o $(setupServer)
-$(request): request.c
-	$(CC) $(CFLAGS) -c request.c -o $(request)
-$(routing): routing.c
-	$(CC) $(CFLAGS) -c routing.c -o $(routing)
-$(helper): helper.c
-	$(CC) $(CFLAGS) -c helper.c -o $(helper)
-$(hash_table): hash_table.c
-	$(CC) $(CFLAGS) -c hash_table.c -o $(hash_table)
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
+$(OUT_DIR)/$(LIB): $(OBJS)
+	mkdir -p $(OUT_DIR)
+	ar rcs $(OUT_DIR)/$(LIB) $(OBJS)
 
-
-$(LIB): $(hash_table) $(mimeTypes) $(request) $(helper) $(response) $(routing) $(setupServer) 
-	ld -relocatable $(hash_table) $(mimeTypes) $(request) $(helper) $(response) $(routing)  $(setupServer) -o web.o
-	ar rcs $(out)/$(LIB) web.o
-	
-$(ex_EXEC): example/$(ex_main)
-	$(CC) example/$(ex_main) -o example/$(ex_EXEC) $(ex_CFLAGS)
+example: example/main.c $(OUT_DIR)/$(LIB)
+	$(CC) $(CFLAGS) example/main.c $(LIB_PATH) $(LIBS) -o $(OUT_DIR)/main$(EXEC_EXT)
 
 clean:
-	$(Delete)
-
-example:$(ex_EXEC)
+	$(RM) *.o $(OUT_DIR)/$(LIB) main$(EXEC_EXT)
 
 
 

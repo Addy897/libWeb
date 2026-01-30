@@ -109,9 +109,9 @@ int sendResponse(SOCKET *c, Response *res, Method m) {
 void freeResponse(Response **response) {
   if (response == NULL)
     return;
-  if ((*response)->body != nullptr)
+  if ((*response)->body != NULL)
     free((*response)->body);
-  if ((*response)->headers != nullptr)
+  if ((*response)->headers != NULL)
     freeTable(&(*response)->headers);
   free(*response);
   *response = NULL;

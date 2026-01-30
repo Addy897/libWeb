@@ -2,8 +2,10 @@
 #include "include/request.h"
 #include "include/response.h"
 #include "include/routing.h"
+#ifdef _WIN32
 #include <winerror.h>
-#include <winsock2.h>
+#endif
+
 void handleRequest(SOCKET c, Request *req) {
   char not_found[] = "<html>"
                      "<head>"
@@ -63,37 +65,52 @@ void handleExit(int signum) {
 }
 int initializeSocket() {
   signal(SIGINT, handleExit);
-
+#ifdef _WIN32
   WSADATA wsaData;
   int wsa = WSAStartup(MAKEWORD(2, 2), &wsaData);
   if (wsa != 0) {
     printf("WSASTARTUP FAILED: %d\n", wsa);
     return -1;
   }
+#endif
 
   setPublicDir("./static/");
 
-  server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  server = socket(AF_INET, SOCK_STREAM, 0);
   if (server == INVALID_SOCKET) {
+#ifdef _WIN32
     printf("Unable to initialize socket: %d\n", WSAGetLastError());
     WSACleanup();
+#elif defined(__linux__)
+    perror("Unable to initialize socket");
+#endif    
     return -1;
   }
   int opt = 1;
   int res =
       setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt));
   if (res == SOCKET_ERROR) {
-    printf("Unable to set socket option: %d\n", WSAGetLastError());
     closesocket(server);
+
+#ifdef _WIN32
+    printf("Unable to set socket option: %d\n", WSAGetLastError());
     WSACleanup();
+#elif defined(__linux__)
+    perror("Unable to set socket option");
+#endif
     return -1;
   }
   return 1;
 }
-void handleClient(LPVOID lpParam) {
 
+#ifdef _WIN32
+void handleClient(LPVOID lpParam) {
   SOCKET client = (SOCKET)lpParam;
-  DWORD timeout_ms = 5000;
+#elif defined(__linux__)
+void* handleClient(LPVOID lpParam) {
+   SOCKET client = (int)(intptr_t)lpParam;
+#endif
+  uint32_t timeout_ms = 5000;
 
   setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, (const char *)(&timeout_ms),
              sizeof(timeout_ms));
@@ -111,6 +128,9 @@ void handleClient(LPVOID lpParam) {
     freeRequest(&req);
   }
   closesocket(client);
+#ifdef __linux__
+  return NULL;
+#endif
 }
 
 void startServer(char *addr, int port) {
@@ -120,39 +140,66 @@ void startServer(char *addr, int port) {
   saddr.sin_addr.s_addr = inet_addr(addr);
   int res = bind(server, (SOCKADDR *)&saddr, sizeof(saddr));
   if (res != 0) {
-    printf("Unable to bind socket: %d\n", WSAGetLastError());
     closesocket(server);
+ #ifdef _WIN32
+    printf("Unable to bind socket: %d\n", WSAGetLastError());
     WSACleanup();
+#elif defined(__linux__)
+    perror("Unable to bind socket");
+#endif
     return;
   }
   res = listen(server, MAXCONN);
   if (res != 0) {
-    printf("Unable to bind socket: %d\n", WSAGetLastError());
     closesocket(server);
+#ifdef _WIN32
+    printf("Unable to listen socket: %d\n", WSAGetLastError());
     WSACleanup();
+#elif defined(__linux__)
+    perror("Unable to listen socket");
+#endif
     return;
   }
 
   printf("Server started: http://%s:%d\n", addr, port);
   SOCKET c;
   struct sockaddr_in caddr;
-  int caddr_len = sizeof(caddr);
+  unsigned int caddr_len = sizeof(caddr);
   while (1) {
     c = accept(server, (SOCKADDR *)&caddr, &caddr_len);
     if (c == INVALID_SOCKET) {
+      closesocket(server);
+   #ifdef _WIN32
       printf("Unable to accept socket: %d\n", WSAGetLastError());
-      closesocket(server);
-      WSACleanup();
+    WSACleanup();
+#elif defined(__linux__)
+    perror("Unable to accept socket");
+
+#endif
       return;
     }
-    HANDLE hndl = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)handleClient,
-                               (LPVOID)c, 0, NULL);
+#ifdef _WIN32
+    HANDLE hndl = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)handleClient, (LPVOID)c, 0, NULL);
     if (hndl == NULL) {
-      printf("Unable to start thread: %d\n", WSAGetLastError());
-      closesocket(c);
-      closesocket(server);
-      WSACleanup();
-      return;
+        printf("Unable to start thread: %d\n", WSAGetLastError());
+#else
+    pthread_t tmp;
+    int result = pthread_create(&tmp, NULL, handleClient, ((void*)(intptr_t)c));
+    if (result != 0){ 
+        fprintf(stderr, "Unable to start thread: %s\n", strerror(result));
+#endif
+        closesocket(c);
+        closesocket(server);
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        return;
     }
-  }
+
+#ifdef __linux__
+    pthread_detach(tmp);
+#else
+    CloseHandle(hndl);   
+#endif
+    }
 }

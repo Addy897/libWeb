@@ -1,7 +1,16 @@
 #ifndef REQUEST_H
 #define REQUEST_H
 #include "hash_table.h"
+
+#ifdef _WIN32
 #include <winsock2.h>
+#elif defined(__linux__)
+#include <sys/socket.h>
+typedef int SOCKET;
+#endif
+
+
+
 typedef enum { GET = 0, POST = 1, HEAD = 2 } Method;
 static const char *methods[] = {
     "GET",

@@ -2,14 +2,13 @@
 #include "include/hash_table.h"
 #include <stdlib.h>
 #include <string.h>
-#include <winsock2.h>
 
 Request *initRequest() {
   Request *req = calloc(1, sizeof(Request));
-  req->body = nullptr;
-  req->headers = nullptr;
-  req->query_params = nullptr;
-  req->path = nullptr;
+  req->body = NULL;
+  req->headers = NULL;
+  req->query_params = NULL;
+  req->path = NULL;
   return req;
 }
 const char *getParams(char *name, HashTable *params) {

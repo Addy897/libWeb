@@ -2,7 +2,7 @@ import ctypes
 import string
 import random
 import pytest
-LIB_PATH = "./tests/libs/hash_table.dll"
+LIB_PATH = "./tests/libs/hash_table.a"
 
 lib = ctypes.CDLL(LIB_PATH)
 
