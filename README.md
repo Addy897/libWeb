@@ -1,5 +1,5 @@
 # libWeb
-Micro web framework written in C for windows
+Cross Platform Micro web framework written in C
 
 # compile
 ## libWeb
