@@ -27,7 +27,7 @@ $(OUT_DIR)/$(LIB): $(OBJS)
 	ar rcs $(OUT_DIR)/$(LIB) $(OBJS)
 
 example: example/main.c $(OUT_DIR)/$(LIB)
-	$(CC) $(CFLAGS) example/main.c $(LIB_PATH) $(LIBS) -o $(OUT_DIR)/main$(EXEC_EXT)
+	$(CC) $(CFLAGS) example/main.c $(LIB_PATH) $(LIBS) -o example/main$(EXEC_EXT)
 
 clean:
 	$(RM) *.o $(OUT_DIR)/$(LIB) main$(EXEC_EXT)
