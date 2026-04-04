@@ -1,4 +1,6 @@
 #include "include/request.h"
+#include "include/helper.h"
+
 #include "include/hash_table.h"
 #include <stdlib.h>
 #include <string.h>
@@ -77,7 +79,9 @@ int setRequestHeaders(SOCKET client, Request *req) {
       char *value = strtok(NULL, "");
       if (!key || !value)
         continue;
-      add(key, value, strlen(value), req->query_params);
+     key = trim(key);
+    value=trim(value);
+	 add(key, value, strlen(value)+1, req->query_params);
     }
   } else {
     req->path = strdup(token);
@@ -88,7 +92,9 @@ int setRequestHeaders(SOCKET client, Request *req) {
     char *value = strtok(NULL, "");
     if (!key || !value)
       continue;
-    add(key, value, strlen(value), req->headers);
+    key = trim(key);
+    value=trim(value);
+    add(key, value, strlen(value)+1, req->headers);
   }
 
   return 1;
