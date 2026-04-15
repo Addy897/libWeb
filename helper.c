@@ -38,6 +38,11 @@ int exists(char *fname) {
   return 0;
 }
 
+void toLowerCase(char *str) {
+    for (int i = 0; str[i]; i++) {
+        str[i] = tolower(str[i]);
+    }
+}
 char *trim(char *str)
 {
   char *end;

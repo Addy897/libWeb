@@ -7,4 +7,7 @@ int exists(char *filename);
 void getPublicDir(char *path);
 void setPublicDir(char *path);
 char *trim(char *str);
+
+
+void toLowerCase(char *str);
 #endif

@@ -94,6 +94,10 @@ int setRequestHeaders(SOCKET client, Request *req) {
       continue;
     key = trim(key);
     value=trim(value);
+    toLowerCase(key);
+    toLowerCase(value);
+    
+
     add(key, value, strlen(value)+1, req->headers);
   }
 
