@@ -41,6 +41,7 @@ int setRequestHeaders(SOCKET client, Request *req) {
     req->body_len = bytes_read - (body - buf);
     req->body = calloc(req->body_len, req->body_len);
     if (!req->body) {
+        perror("calloc failed!!");
       req->body_len = 0;
       return 0;
     }
@@ -115,8 +116,10 @@ int setRequestBody(SOCKET c, Request *req, int total_size) {
       req->body_len = 0;
     } else {
       req->body = realloc(req->body, req->body_len + bytes_read);
-      if (!req->body)
+      if (!req->body){
+        perror("realloc failed!!");
         return 0;
+        }
     }
     req->body_len += bytes_read;
   }
@@ -140,7 +143,8 @@ void freeRequest(Request **req) {
   if (!req || !*req)
     return;
   free((*req)->path);
-  free((*req)->body);
+  if((*req)->body !=NULL)
+    free((*req)->body);
   freeTable(&(*req)->headers);
   freeTable(&(*req)->query_params);
   free(*req);
