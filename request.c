@@ -131,7 +131,7 @@ int buildRequest(SOCKET c, Request *req) {
   if ((ret = setRequestHeaders(c, req)) <= 0) {
     return ret;
   }
-  const char *content_string = getAsString("Content-Length", req->headers);
+  const char *content_string = getAsString("content-length", req->headers);
   if (content_string) {
     int content_size = atoi(content_string);
     return setRequestBody(c, req, content_size);

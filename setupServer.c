@@ -112,9 +112,7 @@ void* handleClient(LPVOID lpParam) {
 #endif
   uint32_t timeout_ms = 5000;
 
-  setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, (const char *)(&timeout_ms),
-             sizeof(timeout_ms));
-
+    setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, (const char *)(&timeout_ms), sizeof(timeout_ms));
   while (1) {
     Request *req = initRequest();
     int ret = buildRequest(client, req);
