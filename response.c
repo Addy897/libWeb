@@ -115,6 +115,7 @@ void freeResponse(Response **response) {
     freeTable(&(*response)->headers);
   free(*response);
   *response = NULL;
+  printf("freeResponse successfull\n");
 }
 void setBodyFromFile(char *pathname, Response *res) {
 
