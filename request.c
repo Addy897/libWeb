@@ -39,7 +39,7 @@ int setRequestHeaders(SOCKET client, Request *req) {
   if (*body != '\0') {
 
     req->body_len = bytes_read - (body - buf);
-    req->body = calloc(req->body_len, req->body_len);
+    req->body = calloc(1, req->body_len+1);
     if (!req->body) {
         perror("calloc failed!!");
       req->body_len = 0;
@@ -96,8 +96,6 @@ int setRequestHeaders(SOCKET client, Request *req) {
     key = trim(key);
     value=trim(value);
     toLowerCase(key);
-    toLowerCase(value);
-    
 
     add(key, value, strlen(value)+1, req->headers);
   }

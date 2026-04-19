@@ -2,6 +2,8 @@
 #include "include/request.h"
 #include "include/response.h"
 #include "include/routing.h"
+#include <limits.h>
+    #include <stdlib.h>
 #ifdef _WIN32
 #include <winerror.h>
 #endif
@@ -14,14 +16,23 @@ void handleRequest(SOCKET c, Request *req) {
                      "<body>404 NOT FOUND!!</body>"
                      "</html>";
   const char *method = methods[req->method];
-  if (exists(req->path)) {
+    char public_path[PATH_MAX];
+    char req_path[PATH_MAX];
+    char resolved_path[PATH_MAX];
+    getPublicDir(public_path);
+    strncpy(req_path, public_path, PATH_MAX);
+    strncat(req_path, req->path, PATH_MAX - strlen(req_path) - 1);
 
-    int result = sendFile(c, req->path, req->method);
-
-    if (!result) {
-      printf("%s %s 404\n", method, req->path);
-      return;
-    }
+    char *r = realpath(req_path, resolved_path);
+        
+    if (r != NULL && strncmp(resolved_path, public_path, strlen(public_path)) == 0 && exists(req_path)) {
+            sendFile(c, req->path, req->method);
+            printf("GET %s 200 \n", req->path);
+            int result = sendFile(c, req_path, req->method);
+            if (!result) {
+                    printf("%s %s 404\n", method, req->path);
+                    return;
+            }
     printf("%s %s 200\n", method, req->path);
   } else {
     Response *response = initResponse();

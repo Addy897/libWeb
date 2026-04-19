@@ -1,17 +1,14 @@
 #include "include/helper.h"
-char PUBLIC_DIR[256];
+#include <sys/stat.h>
+#include<stdlib.h>
+char PUBLIC_DIR[PATH_MAX];
 void getPublicDir(char *path) {
 
   strncpy(path, PUBLIC_DIR, strlen(PUBLIC_DIR));
   path[strlen(PUBLIC_DIR)] = '\0';
 }
 void setPublicDir(char *path) {
-  int i = 0;
-  while (path[i] != '\0') {
-    PUBLIC_DIR[i] = path[i];
-    i++;
-  }
-  PUBLIC_DIR[i] = '\0';
+    char* r = realpath(path,PUBLIC_DIR);
 }
 int hasExtension(char *filepath) {
 
@@ -22,20 +19,12 @@ int hasExtension(char *filepath) {
   return 0;
 }
 int exists(char *fname) {
-  if (hasExtension(fname) == 0) {
-
+   struct stat path_stat;
+    if (stat(fname, &path_stat) == 0) {
+        return S_ISREG(path_stat.st_mode);
+    }
     return 0;
-  }
-  char WEB_PATH[256];
-  getPublicDir(WEB_PATH);
-  strcat(WEB_PATH, fname);
-  FILE *file;
-  file = fopen(WEB_PATH, "r");
-  if (file) {
-    fclose(file);
-    return 1;
-  }
-  return 0;
+
 }
 
 void toLowerCase(char *str) {

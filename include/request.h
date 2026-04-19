@@ -11,11 +11,12 @@ typedef int SOCKET;
 
 
 
-typedef enum { GET = 0, POST = 1, HEAD = 2 } Method;
+typedef enum { GET = 0, POST = 1, HEAD = 2, OPTIONS = 3 } Method;
 static const char *methods[] = {
     "GET",
     "POST",
     "HEAD",
+    "OPTIONS",
 };
 
 #define METHODS_LEN sizeof(methods) / sizeof(methods[0])

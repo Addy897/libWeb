@@ -134,14 +134,11 @@ void setBodyFromFile(char *pathname, Response *res) {
   fclose(file);
 }
 int sendFile(SOCKET client, char *filepath, Method m) {
-  char WEB_PATH[256];
-  getPublicDir(WEB_PATH);
-  strncat(WEB_PATH, filepath, strlen(filepath));
 
   char data[1024];
-  FILE *fptr = fopen(WEB_PATH, "rb");
+  FILE *fptr = fopen(filepath, "rb");
   if (!fptr) {
-    printf("Error no such file: %s\n", WEB_PATH);
+    printf("Error no such file: %s\n", filepath);
     return 0;
   }
   fseek(fptr, 0L, SEEK_END);
