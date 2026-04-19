@@ -9,7 +9,7 @@
 typedef int SOCKET;
 #endif
 
-
+#define MAX_CONTENT_SIZE (10 * 1024 * 1024)
 
 typedef enum { GET = 0, POST = 1, HEAD = 2, OPTIONS = 3 } Method;
 static const char *methods[] = {

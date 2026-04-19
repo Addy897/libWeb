@@ -26,7 +26,6 @@ void handleRequest(SOCKET c, Request *req) {
     char *r = realpath(req_path, resolved_path);
         
     if (r != NULL && strncmp(resolved_path, public_path, strlen(public_path)) == 0 && exists(req_path)) {
-            sendFile(c, req->path, req->method);
             printf("GET %s 200 \n", req->path);
             int result = sendFile(c, req_path, req->method);
             if (!result) {
@@ -117,13 +116,14 @@ int initializeSocket() {
 #ifdef _WIN32
 void handleClient(LPVOID lpParam) {
   SOCKET client = (SOCKET)lpParam;
+  uint32_t timeout_ms = 5000;
+    setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, (const char *)(&timeout_ms), sizeof(timeout_ms));
 #elif defined(__linux__)
 void* handleClient(LPVOID lpParam) {
    SOCKET client = (int)(intptr_t)lpParam;
+   struct timeval tv = { .tv_sec = 5, .tv_usec = 0 };
+   setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 #endif
-  uint32_t timeout_ms = 5000;
-
-    setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, (const char *)(&timeout_ms), sizeof(timeout_ms));
   while (1) {
     Request *req = initRequest();
     int ret = buildRequest(client, req);

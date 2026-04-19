@@ -1,4 +1,5 @@
 #include "include/request.h"
+#include "include/response.h"
 #include "include/helper.h"
 
 #include "include/hash_table.h"
@@ -21,7 +22,7 @@ int setRequestHeaders(SOCKET client, Request *req) {
     return 0;
   char buf[1024];
   memset(buf, 0, 1024);
-  int bytes_read = recv(client, buf, sizeof(buf), 0);
+  int bytes_read = recv(client, buf, sizeof(buf)-1, 0);
   if (bytes_read < 0)
     return 0;
   buf[bytes_read] = '\0';
@@ -47,7 +48,7 @@ int setRequestHeaders(SOCKET client, Request *req) {
     }
     memcpy(req->body, body, req->body_len);
   }
-  line = strtok_r(buf, "\n", &saveptr);
+  line = strtok_r(buf, "\r\n", &saveptr);
   token = strtok(line, " ");
   if (token == NULL)
     return 0;
@@ -65,7 +66,8 @@ int setRequestHeaders(SOCKET client, Request *req) {
   char *version = strtok(NULL, " ");
   if (version == NULL)
     return 0;
-  strcpy(req->version, version);
+  strncpy(req->version, version,sizeof(req->version)-1);
+  req->version[sizeof(req->version) - 1] = '\0';
   char *query_start = strchr(token, '?');
   if (query_start != NULL) {
     req->query_params = initTable(16);
@@ -123,7 +125,6 @@ int setRequestBody(SOCKET c, Request *req, int total_size) {
   }
   return 1;
 }
-
 int buildRequest(SOCKET c, Request *req) {
   int ret;
   if ((ret = setRequestHeaders(c, req)) <= 0) {
@@ -131,8 +132,17 @@ int buildRequest(SOCKET c, Request *req) {
   }
   const char *content_string = getAsString("content-length", req->headers);
   if (content_string) {
-    int content_size = atoi(content_string);
-    return setRequestBody(c, req, content_size);
+    long content_size = strtol(content_string,NULL,10);
+    if(content_size<0 || content_size >=MAX_CONTENT_SIZE){
+        Response *res = initResponse();
+        setStatus(413, res);
+        setResponseBody("Content Too Large", res);
+        sendResponse(&c, res, req->method);
+        freeResponse(&res);  
+        return -1; 
+    }
+    int r = setRequestBody(c, req, content_size);
+    return r;
   }
   return 1;
 }

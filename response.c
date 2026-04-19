@@ -79,10 +79,21 @@ char *responseToString(int *total_len, Response *res, Method m) {
     addHeader("Content-Length", content_len_buf, res->headers);
   }
   char *full_headers = getAllHeaders(res->headers);
-  int headers_len = strlen(full_headers);
+  if(!full_headers){
+       *total_len = 0;
+        perror("Headers is NULL");
+        return NULL;
+    }
+        int headers_len = strlen(full_headers);
 
   int full_len = current_len + headers_len + body_len + 2;
   char *data = calloc(full_len + 1, sizeof(char));
+  if(!data){
+        *total_len = 0;
+        perror("calloc for data failed");
+        return NULL;
+
+    }
   memcpy(data, status, current_len);
   memcpy(data + current_len, full_headers, headers_len);
   current_len += headers_len;
@@ -99,6 +110,8 @@ char *responseToString(int *total_len, Response *res, Method m) {
 int sendResponse(SOCKET *c, Response *res, Method m) {
   int len = 0;
   char *data = responseToString(&len, res, m);
+  if (!data)
+    return -1;
   int ret = send(*c, data, len, 0);
   if (ret < 0) {
     printf("[sendResponse] ret = %d\n", ret);
@@ -142,7 +155,7 @@ int sendFile(SOCKET client, char *filepath, Method m) {
     return 0;
   }
   fseek(fptr, 0L, SEEK_END);
-  int size = ftell(fptr);
+  long size = ftell(fptr);
   rewind(fptr);
   char *mime = getMiME(filepath);
   Response *res = initResponse();

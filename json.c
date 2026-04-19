@@ -33,6 +33,10 @@ static void array_push(JsonValue *arr, JsonValue *item) {
         arr->array.capacity = arr->array.capacity ? arr->array.capacity * 2 : 4;
         arr->array.items = realloc(arr->array.items,
                                    arr->array.capacity * sizeof(JsonValue *));
+        if(arr->array.items == NULL){
+            perror("[json] relloc failed");
+            return;
+        }
     }
     arr->array.items[arr->array.count++] = item;
 }
