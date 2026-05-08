@@ -31,11 +31,8 @@ typedef struct {
 } Request;
 
 Request *initRequest();
-int setRequestHeaders(SOCKET client, Request *req);
-int setRequestBody(SOCKET c, Request *req, int total_size);
 
 const char *getParams(char *name, HashTable *params);
 extern const char *getHeader(char *name, HashTable *headers);
-int buildRequest(SOCKET c, Request *req);
 void freeRequest(Request **req);
 #endif

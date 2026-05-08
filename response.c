@@ -107,18 +107,7 @@ char *responseToString(int *total_len, Response *res, Method m) {
   *total_len = current_len;
   return data;
 }
-int sendResponse(SOCKET *c, Response *res, Method m) {
-  int len = 0;
-  char *data = responseToString(&len, res, m);
-  if (!data)
-    return -1;
-  int ret = send(*c, data, len, 0);
-  if (ret < 0) {
-    printf("[sendResponse] ret = %d\n", ret);
-  }
-  free(data);
-  return ret;
-}
+
 void freeResponse(Response **response) {
   if (response == NULL)
     return;
@@ -129,6 +118,7 @@ void freeResponse(Response **response) {
   free(*response);
   *response = NULL;
 }
+
 void setBodyFromFile(char *pathname, Response *res) {
 
   FILE *file = fopen(pathname, "rb");
@@ -146,46 +136,4 @@ void setBodyFromFile(char *pathname, Response *res) {
   }
   fclose(file);
 }
-int sendFile(SOCKET client, char *filepath, Method m) {
 
-  char data[1024];
-  FILE *fptr = fopen(filepath, "rb");
-  if (!fptr) {
-    printf("Error no such file: %s\n", filepath);
-    return 0;
-  }
-  fseek(fptr, 0L, SEEK_END);
-  long size = ftell(fptr);
-  rewind(fptr);
-  char *mime = getMiME(filepath);
-  Response *res = initResponse();
-  addHeader("Content-Type", mime, res->headers);
-  char s[32];
-  snprintf(s, sizeof(s), "%d", size);
-  addHeader("Content-Length", s, res->headers);
-  int len = 0;
-  char *d = responseToString(&len, res, m);
-  send(client, d, len, 0);
-  free(d);
-  freeResponse(&res);
-  if (m == HEAD) {
-    fclose(fptr);
-    return 1;
-  }
-  size_t bytes_read;
-  size_t total_sent = 0;
-  char buffer[65536];
-  while ((bytes_read = fread(buffer, sizeof(char), sizeof(buffer), fptr)) > 0) {
-    size_t bytes_sent = send(client, buffer, bytes_read, 0);
-    if (bytes_sent == -1) {
-      perror("Error sending data");
-      return 0;
-    }
-    total_sent += bytes_sent;
-    if (total_sent >= size) {
-      break;
-    }
-  }
-  fclose(fptr);
-  return 1;
-}

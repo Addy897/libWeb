@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <ctype.h>
 
-
-
 typedef struct {
     const char *src;
     int         pos;

@@ -1,0 +1,7 @@
+enum error_codes{
+    ERR_UNKNOWN = -1,
+    ERR_CONTENT_TOO_LARGE = -2 ,
+    ERR_PARSING_FAILED = -3,
+    ERR_MEMORY_ALLOCATION = -4,
+    ERR_NO_RESPONSE_DATA =  -5,
+};

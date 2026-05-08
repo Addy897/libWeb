@@ -4,7 +4,6 @@
 #include "helper.h"
 #include "mimeTypes.h"
 #include "request.h"
-
 #include <fcntl.h>
 #include <stdio.h>
 typedef struct {
@@ -20,8 +19,6 @@ typedef struct {
 static StatusCode StatusCodes[] = {{200, "OK"}, {404, "Not Found"}};
 #define STATUS_COUNT (sizeof(StatusCodes) / sizeof(StatusCode))
 
-int sendFile(SOCKET client, char *filepath, Method m);
-int sendResponse(SOCKET *client, Response *response, Method method);
 
 Response *initResponse();
 void setStatus(int status, Response *response);
@@ -33,6 +30,6 @@ char *getAllHeaders(HashTable *headers);
 void setResponseBody(char *body, Response *);
 
 void setBodyFromFile(char *pathname, Response *res);
-
+char * responseToString(int *,Response*,Method);
 void freeResponse(Response **response);
 #endif
