@@ -1,3 +1,6 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "include/connection.h"
 #include <sys/sendfile.h>
 Connection * init_connection(){
@@ -5,6 +8,7 @@ Connection * init_connection(){
     return con;
 }
 void free_connection(Connection ** con){
+    if(*con == NULL) return;
     Connection * conn = *con;
     closesocket(conn->client);
     if(conn->req){
@@ -21,34 +25,42 @@ void free_connection(Connection ** con){
 int parse_status_line(Request* req,char * line){
     char * token ,*saved_line;
     token = strtok_r(line, " ",&saved_line);
-    if (token == NULL)
-        return 0;
+    if (token == NULL){
+        printf("Unable to parse line %s\n",line);
+        return ERR_PARSING_FAILED;
+    }
     req->method = -1;
     for (int i = 0; i < METHODS_LEN; i++) {
         if (strcmp(token, methods[i]) == 0) {
             req->method = (Method)i;
         }
     }
-    if (req->method == -1)
-        return 0;
+    if (req->method == -1){
+        printf("Unable to parse method\n");
+        return ERR_PARSING_FAILED;
+    }
     
     char* req_target = strtok_r(saved_line, " ",&saved_line);
-    if (req_target == NULL)
-        return 0;
+    if (req_target == NULL){
+        printf("Unable to req_target %s \n",saved_line);
+        return ERR_PARSING_FAILED;
+    }
 
 
     char *version = strtok_r(saved_line, " ",&saved_line);
-    if (version == NULL)
-        return 0;
+    if (version == NULL){
+        printf("Unable to version %s \n",saved_line);
+        return ERR_PARSING_FAILED;
+    }
     strncpy(req->version, version,sizeof(req->version)-1);
     req->version[sizeof(req->version) - 1] = '\0';
 
-    char *query_start = strchr(token, '?');
+    char *query_start = strchr(req_target, '?');
     if (query_start != NULL) {
         req->query_params = initTable(16);
         char *path = strtok_r(req_target, "?",&req_target);
         if (!path){
-            return 0;
+            return ERR_PARSING_FAILED;
         }
         req->path = strdup(path);
         char * query;
@@ -63,6 +75,7 @@ int parse_status_line(Request* req,char * line){
     } else {
         req->path = strdup(req_target);
     }
+    return 1;
 }
 int parse_headers(Connection * conn){
     char * saved_ptr = conn->data.req.buf;
@@ -70,8 +83,11 @@ int parse_headers(Connection * conn){
     char *line;
     if(conn->req->path == NULL){
         line = strsplit(saved_ptr,"\r\n",&saved_ptr);
-        if(line == NULL) return 0;
-        if(parse_status_line(conn->req,line) <=0){
+        if(line == NULL){
+            printf("Line is empty %s \n",saved_ptr);
+            return ERR_PARSING_FAILED;
+        }
+        if(parse_status_line(conn->req,line) <0){
             return ERR_PARSING_FAILED;
         }
     }
@@ -80,6 +96,7 @@ int parse_headers(Connection * conn){
     while ((line = strsplit(saved_ptr, "\r\n",&saved_ptr)) != NULL) {
         if(*line == '\0'){
             conn->state = PARSING_BODY;
+            break;
         }
         char *key = strsplit(line, ":",&line);
         if (!key || !line || *line =='\0')
@@ -103,7 +120,7 @@ int parse_headers(Connection * conn){
         conn->req->body = calloc(1, conn->req->body_len + 1);
         if(!conn->req->body) return ERR_MEMORY_ALLOCATION;
         
-        memcpy(conn->req->body, conn->data.req.buf, conn->req->body_len);
+    memcpy(conn->req->body, conn->data.req.buf, conn->req->body_len);
         conn->data.req.pos = 0;     
     }
      
@@ -112,25 +129,29 @@ int parse_headers(Connection * conn){
 }
 
 int build_request(Connection * conn) {
-    if (conn == NULL || conn->req == NULL || conn->client == 0)
+    if (conn == NULL || conn->req == NULL || conn->client == 0){
         return 0;
+    }
     if(conn->state == REQUEST_BUILT){
-        return 0;
+        return 1;
     }
 
     int bytes_read = 0;
     char buf[1024];
     while((bytes_read = recv(conn->client, buf, sizeof(buf)-1, 0)) > 0){
         buf[bytes_read] = '\0'; 
-        if(bytes_read + conn->data.req.pos > sizeof(buf) - 1){
+        if(bytes_read + conn->data.req.pos > sizeof(conn->data.req.buf) - 1){
                 return ERR_CONTENT_TOO_LARGE;
         }
 
         memcpy(conn->data.req.pos+conn->data.req.buf,buf,bytes_read);
         conn->data.req.pos+=bytes_read;
+        conn->data.req.buf[conn->data.req.pos] = '\0';
         if(conn->state == PARSING_HEADERS){
-            parse_headers(conn);
-        }else if(conn->state == PARSING_BODY){
+            int r = parse_headers(conn);
+            if(r == ERR_PARSING_FAILED) return r;
+        }
+        if(conn->state == PARSING_BODY){
             //RAW COPY FOR NOW
             const char *content_string = getAsString("content-length", conn->req->headers);
             if (content_string) {
@@ -156,20 +177,17 @@ int build_request(Connection * conn) {
                     conn->req->body_len += conn->data.req.pos;
               }else{
                     conn->state=REQUEST_BUILT;
+                    return 1;
                 }
                 
-          }else{
+            }else{
             
                     conn->state=REQUEST_BUILT;
-          }
-           
-
+                    return 1;   
+            }
         }
-         
     }
-    if(bytes_read == 0){
-        return ERR_UNKNOWN;
-    }else{
+    if(bytes_read<0){
         int e = GET_NET_ERROR;
         if(IS_WOULD_BLOCK(e)){
             return 0;
@@ -178,64 +196,72 @@ int build_request(Connection * conn) {
     return 1;
 }
 int sendResponse(Connection * con) {
-  int len = 0;
-  char * data;
-
-  if(con->data.res.resp_buf == NULL){
-      data = responseToString(&len, con->res, con->req->method);
-      if (!data)
-        return ERR_NO_RESPONSE_DATA;
-    con->data.res.total_size = len;
-    con->data.res.resp_buf = data;
-  }
- if(con->data.res.total_size == con->data.res.bytes_sent && con->data.res.total_size > 0){
-    free(data);
-    con->state = RESPONSE_SENT;
-    return 1;
- }
-
-  data = con->data.res.resp_buf + con->data.res.bytes_sent;
-  int ret = send(con->client, data, len, 0);
-  if(ret > 0){
-    con->data.res.bytes_sent+=ret;
-  }
-  if (ret < 0) {
-    int e = GET_NET_ERROR;
-    if(IS_WOULD_BLOCK(e)){
-        return 0;
+    if(con->data.res.resp_buf == NULL){
+        int len = 0;
+        char * data;
+        data = responseToString(&len, con->res, con->req->method);
+        if (!data) return ERR_NO_RESPONSE_DATA;
+        con->data.res.total_size = len;
+        con->data.res.resp_buf = data;
     }
-    printf("[sendResponse] ret = %d\n", ret);
-  }
- if(con->data.res.total_size == con->data.res.bytes_sent){
-    free(data);
-    con->state = RESPONSE_SENT;
-    return 1;
-  }
+    
+    if(con->data.res.total_size == con->data.res.bytes_sent && con->data.res.total_size > 0){
+        free(con->data.res.resp_buf);
+        con->data.res.resp_buf = NULL;
+        con->state = RESPONSE_SENT;
+        return 1;
+    }
+    char * data = con->data.res.resp_buf + con->data.res.bytes_sent;
+    int len = con->data.res.total_size - (int)con->data.res.bytes_sent;
+    int ret = send(con->client, data, len, 0);
+    if(ret > 0){
+        con->data.res.bytes_sent+=ret;
+    }
+    if (ret < 0) {
+        int e = GET_NET_ERROR;
+        if(IS_WOULD_BLOCK(e)){
+            return 0;
+        }
+        printf("[sendResponse] ret = %d\n", ret);
+    }
+    if(con->data.res.total_size == con->data.res.bytes_sent){
+        free(con->data.res.resp_buf);
+        con->data.res.resp_buf = NULL;
+        con->state = RESPONSE_SENT;
+        return 1;
+    }
   return 0;
 }
 
 
-int sendFile(Connection *con,char* filepath) {
+int sendFile(Connection *con) {
     if(con->state == SENDING_FILE_HEADERS){
-        if(con->res == NULL){ 
+        if(con->res == NULL){
+            if(con->file.filepath == NULL){
+                return ERR_UNKNOWN;
+            } 
+            char * filepath = con->file.filepath;
             char data[1024];
-            FILE *fptr = fopen(filepath, "rb");
-            if (!fptr) {
-              printf("Error no such file: %s\n", filepath);
-              return -1;
-            }
-            fseek(fptr, 0L, SEEK_END);
-            long size = ftell(fptr);
-            rewind(fptr);
             char *mime = getMiME(filepath);
             con->res = initResponse();
             addHeader("Content-Type", mime, con->res->headers);
             char s[32];
-            snprintf(s, sizeof(s), "%d", size);
-            addHeader("Content-Length", s, con->res->headers);
-            con->file.fd = fileno(fptr);
+            int fd = open(filepath, O_RDONLY);
+            if (fd == -1) {
+                perror("open");
+                return -1;
+            }
+            struct stat st;
+            if (fstat(fd, &st) == -1) {
+                perror("fstat");
+                close(fd);
+                return -1;
+            }
+            con->file.fd = fd;
+            con->file.total_size = st.st_size;
             con->file.offset = 0;
-            con->file.total_size =size;
+            snprintf(s, sizeof(s), "%d", con->file.total_size);
+            addHeader("Content-Length", s, con->res->headers);
         }
         sendResponse(con);
         if(con->state == RESPONSE_SENT){
@@ -252,8 +278,9 @@ int sendFile(Connection *con,char* filepath) {
             print_error("Send file");
             return -1;
         }
-        con->file.offset +=bytes_sent;
         if(con->file.offset == con->file.total_size){
+            close(con->file.fd);
+            con->file.fd = -1;
             con->state = RESPONSE_SENT;
             return 1;
         }

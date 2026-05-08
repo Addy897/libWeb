@@ -29,6 +29,7 @@ struct file_res_states{
     int fd;
     off_t offset;
     size_t total_size;
+    char filepath[PATH_MAX];
 
 };
 
@@ -50,7 +51,7 @@ Connection * init_connection();
 int parse_status_line(Request* req,char * line);
 int parse_headers(Connection * conn);
 int build_request(Connection * conn);
-int sendFile(Connection* con,char* filepath);
+int sendFile(Connection* con);
 int sendResponse(Connection* con);
 
 void free_connection(Connection ** con);

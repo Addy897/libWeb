@@ -27,5 +27,5 @@ void freeRequest(Request **req) {
   freeTable(&(*req)->headers);
   freeTable(&(*req)->query_params);
   free(*req);
-  req = NULL;
+  *req = NULL;
 }

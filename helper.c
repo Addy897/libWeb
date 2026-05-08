@@ -8,12 +8,7 @@ void getPublicDir(char *path) {
   path[strlen(PUBLIC_DIR)] = '\0';
 }
 void setPublicDir(char *path) {
-    int i = 0;
-  while (path[i] != '\0') {
-    PUBLIC_DIR[i] = path[i];
-    i++;
-  }
-  PUBLIC_DIR[i] = '\0';
+  char* r = realpath(path,PUBLIC_DIR);
 }
 int hasExtension(char *filepath) {
 

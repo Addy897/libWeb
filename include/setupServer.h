@@ -9,7 +9,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#define MAXCONN 100
+#define MAXCONN 4096
 #define BUFF_SIZE 1024
 static SOCKET server = INVALID_SOCKET;
 #endif
