@@ -15,7 +15,7 @@
 
 #define CONN_READ_FLAGS  (EPOLLIN  | EPOLLONESHOT | EPOLLET | EPOLLRDHUP)
 #define CONN_WRITE_FLAGS (EPOLLOUT | EPOLLONESHOT | EPOLLET)
-#define MAX_EVENTS 1024
+#define MAX_EVENTS 4096
 
 typedef struct {
     char *addr;

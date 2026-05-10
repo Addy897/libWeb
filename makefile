@@ -14,7 +14,7 @@ LIB = libWeb.a
 CC = gcc
 OUT_DIR = out
 
-CFLAGS = -I"./include/" -ggdb -pthread
+CFLAGS = -I"./include/" -ggdb -pthread -O3
 LIB_PATH = -L$(OUT_DIR) -lWeb
 
 all: $(OUT_DIR)/$(LIB)

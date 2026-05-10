@@ -1,6 +1,7 @@
 *.o
 __pycache__
 main
+benchmark_result.txt
 app
 test.*
 .vscode

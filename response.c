@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 Response *initResponse() {
   Response *response = malloc(sizeof(Response));
@@ -120,20 +121,20 @@ void freeResponse(Response **response) {
 }
 
 void setBodyFromFile(char *pathname, Response *res) {
+    int fd = open(pathname, O_RDONLY);
+    if (fd < 0) return;
 
-  FILE *file = fopen(pathname, "rb");
-  if (file == NULL)
-    return;
+    struct stat st;
+    if (fstat(fd, &st) < 0) {
+        close(fd);
+        return;
+    }
 
-  fseek(file, 0, SEEK_END);
-  long size = ftell(file);
-  fseek(file, 0, SEEK_SET);
-
-  res->body = malloc(size + 1);
-  if (res->body) {
-    fread(res->body, 1, size, file);
-    res->body[size] = '\0';
-  }
-  fclose(file);
+    res->body = malloc(st.st_size + 1);
+    if (res->body) {
+        read(fd, res->body, st.st_size);
+        res->body[st.st_size] = '\0';
+    }
+    close(fd);
 }
 

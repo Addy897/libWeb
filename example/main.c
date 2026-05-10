@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include "main.h"
 void indexH(Request *req, Response *res) {
-  const char * host = getHeader("host",req->headers);
-  printf("Host: %s\n",host);
   setBodyFromFile("./public/index.html", res);
 }
 void indexPost(Request *req, Response *res) {
