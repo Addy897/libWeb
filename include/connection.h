@@ -6,6 +6,9 @@
 #include "response.h"
 #include <sys/epoll.h>
 
+#define BUFFER_MAX 65535
+
+
 enum STATE {
     PARSING_HEADERS,
     PARSING_BODY,
@@ -17,7 +20,7 @@ enum STATE {
 };
 
 struct req_states{
-    char buf[4096];
+    char buf[BUFFER_MAX];
     int pos;
 };
 struct res_states{
@@ -33,7 +36,7 @@ struct file_res_states{
 
 };
 
-union data_u{
+struct data_u{
     struct req_states req;
     struct res_states res;
 };
@@ -42,13 +45,13 @@ struct connection_t{
     enum STATE state;
     Request * req;
     Response* res;
-    union data_u data;
+    struct data_u data;
     struct file_res_states file;
 };
 typedef struct connection_t Connection;
 
 Connection * init_connection();
-int parse_status_line(Request* req,char * line);
+int parse_status_line(Request* req,StringView line);
 int parse_headers(Connection * conn);
 int build_request(Connection * conn);
 int sendFile(Connection* con);

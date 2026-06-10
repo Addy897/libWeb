@@ -1,154 +1,184 @@
 #include "include/hash_table.h"
+
+static unsigned int hash_sv(StringView sv, HashTable *table) {
+    if (table == NULL)
+        return -1;
+    unsigned long hash = 5381;
+    int i = 0;
+    while (i < sv.count) {
+        // hash = hash*33 + key[i]
+        char x = sv.data[i];
+        if(table->case_insensitive)
+            x = 'A' <= sv.data[i] && sv.data[i] <= 'Z' ? x+32:x;
+
+        hash = ((hash << 5) + hash) + x;
+        i++;
+    }
+    return hash % table->capacity;
+}
 static unsigned int hash(char *key, HashTable *table) {
-  if (table == NULL)
-    return -1;
-  unsigned long hash = 5381;
-  while (*key != '\0') {
-    // hash = hash*33 + key[i]
-    hash = ((hash << 5) + hash) + *key;
-    key++;
-  }
-  return hash % table->capacity;
+    return hash_sv(sv_from_cstr(key),table); 
 }
-
-HashTable *initTable(int capacity) {
-  HashTable *hashtable = malloc(sizeof(HashTable));
-  if (hashtable == NULL)
-    return NULL;
-  if (capacity <= 0)
-    capacity = DEFAULT_SIZE;
-  hashtable->entries = calloc(capacity, sizeof(HashEntry *));
-  hashtable->capacity = capacity;
-  hashtable->entry_count = 0;
-  return hashtable;
+HashTable *init_table(int capacity) {
+    HashTable *hashtable = malloc(sizeof(HashTable));
+    if (hashtable == NULL)
+        return NULL;
+    if (capacity <= 0)
+        capacity = DEFAULT_SIZE;
+    hashtable->entries = calloc(capacity, sizeof(HashEntry *));
+    hashtable->capacity = capacity;
+    hashtable->entry_count = 0;
+    hashtable->case_insensitive = false;
+    return hashtable;
 }
-void growTable(HashTable *table) {
+void grow_table(HashTable *table) {
 
-  table->capacity *= 2;
-  HashEntry **new_entries = calloc(table->capacity, sizeof(HashEntry *));
-  if (table->entries != NULL) {
-    for (int i = 0; i < table->capacity / 2; i++) {
-      HashEntry *current = table->entries[i];
-      while (current != NULL) {
-        HashEntry *temp = current;
-        int hashval = hash(temp->key, table);
-        current = current->next;
-        temp->next = new_entries[hashval];
-        new_entries[hashval] = temp;
-      }
+    table->capacity *= 2;
+    HashEntry **new_entries = calloc(table->capacity, sizeof(HashEntry *));
+    if (table->entries != NULL) {
+        for (int i = 0; i < table->capacity / 2; i++) {
+            HashEntry *current = table->entries[i];
+            while (current != NULL) {
+                HashEntry *temp = current;
+                int hashval = hash_sv(temp->key, table);
+                current = current->next;
+                temp->next = new_entries[hashval];
+                new_entries[hashval] = temp;
+            }
+        }
     }
-  }
-  free(table->entries);
-  table->entries = new_entries;
+    free(table->entries);
+    table->entries = new_entries;
 }
 
-const float loadFactor(const HashTable *table) {
+const float load_factor(const HashTable *table) {
 
-  return (float)table->entry_count / (float)table->capacity;
+    return (float)table->entry_count / (float)table->capacity;
 }
 
-HashEntry *getEntry(char *key, HashTable *table, unsigned int hashval) {
-  if (table == NULL || table->entries == NULL)
-    return NULL;
-  HashEntry *entry = table->entries[hashval];
-  while (entry != NULL) {
-    if (strcmp(entry->key, key) == 0) {
-      break;
+HashEntry *get_entry_sv(StringView sv, HashTable *table, unsigned int hashval) {
+    if (table == NULL || table->entries == NULL)
+        return NULL;
+    HashEntry *entry = table->entries[hashval];
+    while (entry != NULL) {
+        if(table->case_insensitive && sv_eq_ignorecase(entry->key,sv)){
+            break;
+        }   
+        if (sv_eq(entry->key,sv)) {
+            break;
+        }
+        entry = entry->next;
     }
-    entry = entry->next;
-  }
-  return entry;
+    return entry;
 }
-void removeKey(char *key, HashTable *table) {
-  if (table == NULL || table->entries == NULL)
-    return;
-  int hashval = hash(key, table);
-  HashEntry *curr = table->entries[hashval];
-  HashEntry *prev = NULL;
 
-  while (curr != NULL) {
-    if (strcmp(curr->key, key) == 0) {
-      if (prev == NULL) {
-        table->entries[hashval] = curr->next;
-      } else {
-        prev->next = curr->next;
-      }
-      free(curr->key);
-      free(curr->value);
-      free(curr);
-      table->entry_count--;
-      return;
+
+void remove_key_sv(StringView key, HashTable *table) {
+    if (table == NULL || table->entries == NULL)
+        return;
+    int hashval = hash_sv(key, table);
+    HashEntry *curr = table->entries[hashval];
+    HashEntry *prev = NULL;
+
+    while (curr != NULL) {
+        if (sv_eq(curr->key, key) || (table->case_insensitive && sv_eq_ignorecase(curr->key,key))){
+            if (prev == NULL) {
+                table->entries[hashval] = curr->next;
+            } else {
+                prev->next = curr->next;
+            }
+            free(curr->key.data);
+            curr->key.count = 0;
+            curr->key.data = NULL;
+            free(curr->value);
+            free(curr);
+            table->entry_count--;
+            return;
+        }
+        prev = curr;
+        curr = curr->next;
     }
-    prev = curr;
-    curr = curr->next;
-  }
-}
-void add(char *key, const void *value, int val_size, HashTable *table) {
-  if (table == NULL || table->entries == NULL)
-    return;
-
-  unsigned int hashval = hash(key, table);
-  HashEntry *entry = getEntry(key, table, hashval);
-  if (entry == NULL) {
-    entry = malloc(sizeof(HashEntry));
-    entry->value = malloc(val_size);
-    entry->key = strdup(key);
-    entry->next = table->entries[hashval];
-    table->entries[hashval] = entry;
-    table->entry_count++;
-    if (loadFactor(table) >= 0.7)
-      growTable(table);
-  } else {
-    free(entry->value);
-    entry->value = malloc(val_size);
-  }
-  memcpy(entry->value, value, val_size);
 }
 
-void *get(char *key, HashTable *table) {
-  if (table == NULL || table->entries == NULL)
-    return NULL;
+void add_sv(StringView sv, const void *value, int val_size, HashTable *table) {
+    if (table == NULL || table->entries == NULL)
+        return;
 
-  int hashval = hash(key, table);
-  HashEntry *entry = getEntry(key, table, hashval);
-  if (entry == NULL)
-    return NULL;
-  return entry->value;
-}
-void freeTable(HashTable **hashtable) {
-  if (!hashtable || !(*hashtable))
-    return;
-  if ((*hashtable)->entries != NULL) {
-    for (int i = 0; i < (*hashtable)->capacity; i++) {
-      HashEntry *current = (*hashtable)->entries[i];
-      while (current != NULL) {
-        HashEntry *temp = current;
-        current = current->next;
-        free(temp->key);
-        free(temp->value);
-        free(temp);
-      }
+    unsigned int hashval = hash_sv(sv, table);
+    HashEntry *entry = get_entry_sv(sv, table, hashval);
+    if (entry == NULL) {
+        entry = malloc(sizeof(HashEntry));
+        entry->value = malloc(val_size);
+        entry->key = sv_from_size(strndup(sv.data,sv.count),sv.count);
+        entry->next = table->entries[hashval];
+        table->entries[hashval] = entry;
+        table->entry_count++;
+        if (load_factor(table) >= 0.7)
+            grow_table(table);
+    } else {
+        free(entry->value);
+        entry->value = malloc(val_size);
     }
-  }
-  free((*hashtable)->entries);
-  free(*hashtable);
-  *hashtable = NULL;
+    memcpy(entry->value, value, val_size);
+
 }
-int getAsInt(char *key, HashTable *table) {
-  void *val = get(key, table);
-  if (val == NULL)
-    return 0;
-  return *(int *)val;
+
+void *get_from_sv(StringView key, HashTable *table) {
+    if (table == NULL || table->entries == NULL)
+        return NULL;
+
+    int hashval = hash_sv(key, table);
+    HashEntry *entry = get_entry_sv(key, table, hashval);
+    if (entry == NULL)
+        return NULL;
+    return entry->value;
 }
-float getAsFloat(char *key, HashTable *table) {
-  void *val = get(key, table);
-  if (val == NULL)
-    return 0.0f;
-  return *(float *)val;
+void free_table(HashTable **hashtable) {
+    if (!hashtable || !(*hashtable))
+        return;
+    if ((*hashtable)->entries != NULL) {
+        for (int i = 0; i < (*hashtable)->capacity; i++) {
+            HashEntry *current = (*hashtable)->entries[i];
+            while (current != NULL) {
+                HashEntry *temp = current;
+                current = current->next;
+                free(temp->key.data);
+                temp->key.count = 0;
+                temp->key.data = NULL;
+                free(temp->value);
+                free(temp);
+            }
+        }
+    }
+    free((*hashtable)->entries);
+    free(*hashtable);
+    *hashtable = NULL;
 }
-const char *getAsString(char *key, HashTable *table) {
-  void *val = get(key, table);
-  if (val == NULL)
-    return 0;
-  return (char *)val;
+int get_as_int_sv(StringView key, HashTable *table) {
+    void *val = get_from_sv(key, table);
+    if (val == NULL)
+        return 0;
+    return *(int *)val;
 }
+
+const char * get_as_cstr_sv(StringView key, HashTable *table) {
+    void *val = get_from_sv(key, table);
+    if (val == NULL)
+        return 0;
+    return (const char *)val;
+}
+
+float get_as_float_sv(StringView key, HashTable *table) {
+    void *val = get_from_sv(key, table);
+    if (val == NULL)
+        return 0.0f;
+    return *(float *)val;
+}
+StringView get_as_sv(StringView key, HashTable *table) {
+    void *val = get_from_sv(key, table);
+    if (val == NULL)
+        return SV_NULL;
+    return *(StringView *)val;
+}
+
+

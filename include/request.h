@@ -22,17 +22,16 @@ static const char *methods[] = {
 #define METHODS_LEN sizeof(methods) / sizeof(methods[0])
 typedef struct {
   Method method;
-  char version[32];
-  int body_len;
-  char *path;
-  char *body;
+  StringView version;
+  StringView path;
+  StringView body;
   HashTable *headers;
   HashTable *query_params;
 } Request;
 
 Request *initRequest();
 
-const char *getParams(char *name, HashTable *params);
-extern const char *getHeader(char *name, HashTable *headers);
+StringView getParams(char *name, HashTable *params);
+extern StringView getHeader(char *name, HashTable *headers);
 void freeRequest(Request **req);
 #endif

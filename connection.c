@@ -2,9 +2,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "include/connection.h"
+#include "include/string_view.h"
 #include <sys/sendfile.h>
+
+
 Connection * init_connection(){
     Connection * con = calloc(1,sizeof(Connection));
+    memset(&con->data,0,sizeof(con->data));
     return con;
 }
 void free_connection(Connection ** con){
@@ -22,16 +26,16 @@ void free_connection(Connection ** con){
 }
 
 
-int parse_status_line(Request* req,char * line){
-    char * token ,*saved_line;
-    token = strtok_r(line, " ",&saved_line);
-    if (token == NULL){
-        printf("Unable to parse line %s\n",line);
+int parse_status_line(Request* req,StringView line){
+    StringView token,saved_line;
+    token = sv_trim(sv_split(&line,' '));
+    if (sv_eq(token,SV_NULL)){
+        printf("Unable to parse line "SV_Fmt" \n",SV_Arg(token));
         return ERR_PARSING_FAILED;
     }
     req->method = -1;
     for (int i = 0; i < METHODS_LEN; i++) {
-        if (strcmp(token, methods[i]) == 0) {
+        if (sv_eq(token, sv_from_cstr(methods[i]))) {
             req->method = (Method)i;
         }
     }
@@ -40,51 +44,44 @@ int parse_status_line(Request* req,char * line){
         return ERR_PARSING_FAILED;
     }
     
-    char* req_target = strtok_r(saved_line, " ",&saved_line);
-    if (req_target == NULL){
-        printf("Unable to req_target %s \n",saved_line);
+    StringView req_target = sv_trim(sv_split(&line,' '));
+    if (sv_eq(req_target,SV_NULL)){
+        printf("Unable to parse path "SV_Fmt" \n",SV_Arg(req_target));
         return ERR_PARSING_FAILED;
     }
 
 
-    char *version = strtok_r(saved_line, " ",&saved_line);
-    if (version == NULL){
-        printf("Unable to version %s \n",saved_line);
+    StringView version = sv_trim(sv_split(&line,' '));
+    if (sv_eq(version,SV_NULL)){
+        printf("Unable to version "SV_Fmt" \n",SV_Arg(version));
         return ERR_PARSING_FAILED;
     }
-    strncpy(req->version, version,sizeof(req->version)-1);
-    req->version[sizeof(req->version) - 1] = '\0';
-
-    char *query_start = strchr(req_target, '?');
-    if (query_start != NULL) {
-        req->query_params = initTable(16);
-        char *path = strtok_r(req_target, "?",&req_target);
-        if (!path){
-            return ERR_PARSING_FAILED;
-        }
-        req->path = strdup(path);
-        char * query;
-        while ((query = strtok_r(req_target, "&", &req_target)) != NULL) {
-            char *key = strtok_r(query, "=",&query);
-            if (!key || !query || *query == '\0')
-                continue;
-            key = trim(key);
-            query= trim(query);
-            add(key, query, strlen(query)+1, req->query_params);
-        }
-    } else {
-        req->path = strdup(req_target);
+    req->version = version;
+    token = sv_split(&req_target,'?');
+    req->path = token;
+    HashTable * queries = init_table(16);
+    while (!sv_eq(req_target,SV_NULL)) {
+        StringView query = sv_split(&req_target,'&');
+        StringView key = sv_split(&query, '=');
+        key = sv_trim(key);
+        query= sv_trim(query);
+        if (sv_eq(key,SV_NULL) || sv_eq(query,SV_NULL))
+            continue;
+        add_sv(key,&query,sizeof(StringView),queries);
     }
+    if(queries->entry_count > 0){
+        req->query_params = queries;
+    }else{
+        free_table(&queries);
+    } 
     return 1;
 }
 
 int parse_headers(Connection * conn){
-    char * saved_ptr = conn->data.req.buf;
-        
-    char *line;
-    if(conn->req->path == NULL){
-        line = strsplit(saved_ptr,"\r\n",&saved_ptr);
-        if(line == NULL){
+    StringView saved_ptr = sv_from_size(conn->data.req.buf,conn->data.req.pos);
+    if(sv_eq(conn->req->path,SV_NULL)){
+        StringView line = sv_split(&saved_ptr,'\n');
+        if(sv_eq(saved_ptr,SV_NULL)){
             printf("Line is empty %s \n",saved_ptr);
             return ERR_PARSING_FAILED;
         }
@@ -92,39 +89,24 @@ int parse_headers(Connection * conn){
             return ERR_PARSING_FAILED;
         }
     }
-    if(conn->req->headers == NULL)
-        conn->req->headers = initTable(16);
-    while ((line = strsplit(saved_ptr, "\r\n",&saved_ptr)) != NULL) {
-        if(*line == '\0'){
+    if(conn->req->headers == NULL){
+        conn->req->headers = init_table(16);
+        conn->req->headers->case_insensitive = true;
+    }
+    while (!sv_eq(saved_ptr,SV_NULL)) {
+        StringView line = sv_split(&saved_ptr,'\n');
+        if(sv_is_empty(line)){
             conn->state = PARSING_BODY;
             break;
         }
-        char *key = strsplit(line, ":",&line);
-        if (!key || !line || *line =='\0')
+        StringView key = sv_trim(sv_split(&line,':'));
+        line = sv_trim(line);
+        if(sv_eq(key,SV_NULL) || sv_eq(line,SV_NULL))
             continue;
-        key = trim(key);
-        line=trim(line);
-        toLowerCase(key);
-        add(key, line, strlen(line)+1, conn->req->headers);
+       
+        add_sv(key, &line, sizeof(StringView), conn->req->headers);
     }
-    int left_size = strlen(saved_ptr);
-    if(left_size > 0){
-        memmove(conn->data.req.buf,saved_ptr,left_size);
-        conn->data.req.pos = left_size;
-        conn->data.req.buf[left_size] = '\0';
-    }else{
-        conn->data.req.pos = 0;
-        conn->data.req.buf[0] = '\0';
-    }
-    if (conn->state == PARSING_BODY && conn->data.req.pos > 0) {
-        conn->req->body_len = conn->data.req.pos;
-        conn->req->body = calloc(1, conn->req->body_len + 1);
-        if(!conn->req->body) return ERR_MEMORY_ALLOCATION;
-        
-    memcpy(conn->req->body, conn->data.req.buf, conn->req->body_len);
-        conn->data.req.pos = 0;     
-    }
-     
+    conn->state = PARSING_BODY;
     return 0;
 
 }
@@ -138,28 +120,27 @@ int build_request(Connection * conn) {
     }
 
     int bytes_read = 0;
-    char buf[1024];
-    while((bytes_read = recv(conn->client, buf, sizeof(buf)-1, 0)) > 0){
+    char buf[4096];
+    while((bytes_read = recv(conn->client, buf,sizeof(buf)-1 , 0)) > 0){
         buf[bytes_read] = '\0'; 
         if(bytes_read + conn->data.req.pos > sizeof(conn->data.req.buf) - 1){
                 return ERR_CONTENT_TOO_LARGE;
         }
+        memcpy(conn->data.req.pos+conn->data.req.buf,buf,bytes_read);
+        conn->data.req.pos+=bytes_read;
 
         if(conn->state == PARSING_HEADERS){
             if (bytes_read + conn->data.req.pos > sizeof(conn->data.req.buf) - 1) {
                 return ERR_CONTENT_TOO_LARGE;
             }
-            memcpy(conn->data.req.pos+conn->data.req.buf,buf,bytes_read);
-            conn->data.req.pos+=bytes_read;
-            conn->data.req.buf[conn->data.req.pos] = '\0';
             int r = parse_headers(conn);
             if(r == ERR_PARSING_FAILED) return r;
         }
         if(conn->state == PARSING_BODY){
             //RAW COPY FOR NOW
-            const char *content_string = getAsString("content-length", conn->req->headers);
-            if (content_string) {
-                long content_size = strtol(content_string,NULL,10);
+            StringView content_string = get_as_sv_s("content-length", conn->req->headers);
+            if (!sv_eq(content_string,SV_NULL)) {
+                int content_size = sv_to_int(content_string);
                 if(content_size<0 || content_size >=MAX_CONTENT_SIZE){
                     conn->state = SENDING_RESPONSE;
                     conn->res = initResponse();
@@ -167,24 +148,15 @@ int build_request(Connection * conn) {
                     setResponseBody("Content Too Large", conn->res);
                     return ERR_CONTENT_TOO_LARGE; 
                 }
-               if(conn->req->body_len < content_size){ 
-                   if (!conn->req->body) {
-                      conn->req->body = strdup(buf);
-                      conn->req->body_len = bytes_read;
+               if(conn->req->body.count < content_size){ 
+                   if (sv_eq(conn->req->body,SV_NULL)) {
+                      StringView buf = sv_from_size(conn->data.req.buf,conn->data.req.pos);
+                      conn->req->body = sv_split_sv(&buf,sv_from_cltr("\r\n\r\n")); 
                     } else {
-                        char * temp = realloc(conn->req->body, conn->req->body_len + bytes_read+1);
-                        if (!temp){
-                            print_error("realloc failed!!");
-                            free(conn->req->body);
-                            conn->req->body = NULL;
-                            return ERR_MEMORY_ALLOCATION;
-                        }
-                        conn->req->body = temp;
-                        memcpy(conn->req->body+conn->req->body_len,buf,bytes_read);
-                        conn->req->body_len += bytes_read;
+                        if(conn->data.req.buf + conn->data.req.pos > conn->req->body.data + conn->req->body.count) 
+                            conn->req->body.count += bytes_read;
                     }
-                    if (conn->req->body_len >= content_size) {
-                        conn->req->body[conn->req->body_len] = '\0';
+                    if (conn->req->body.count >= content_size) {
                         conn->state = REQUEST_BUILT;
                         return 1;
                     }

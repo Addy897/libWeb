@@ -18,7 +18,7 @@ typedef struct Route {
 void initRoutes();
 void addRoute(Method method, char *path,
               void (*callbackfunc)(Request *, Response *));
-Route *hasRoute(Method method, char *path);
+Route *hasRoute(Method method, StringView);
 void cleanupRoutes();
 
 #endif

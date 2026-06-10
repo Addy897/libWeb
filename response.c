@@ -11,7 +11,7 @@ Response *initResponse() {
   Response *response = malloc(sizeof(Response));
   (response)->status = StatusCodes[0];
   (response)->body = NULL;
-  (response)->headers = initTable(16);
+  (response)->headers = init_table(16);
   return response;
 }
 void setStatus(int status, Response *response) {
@@ -31,12 +31,12 @@ void addHeader(char *name, char *value, HashTable *headers) {
 void removeHeader(char *name, HashTable *headers) {
   if (headers == NULL)
     return;
-  removeKey(name, headers);
+  remove_key(name, headers);
 }
-const char *getHeader(char *name, HashTable *headers) {
+StringView getHeader(char *name, HashTable *headers) {
   if (headers == NULL)
-    return NULL;
-  return getAsString(name, headers);
+    return SV_NULL;
+  return get_as_sv_s(name, headers);
 }
 char *getAllHeaders(HashTable *headers) {
   int full_headers_size = 256;
@@ -45,9 +45,9 @@ char *getAllHeaders(HashTable *headers) {
   for (int i = 0; i < headers->capacity; i++) {
     HashEntry *current = headers->entries[i];
     while (current != NULL) {
-      int key_len = strlen(current->key);
-      int val_len = strlen((char *)current->value);
-      int final_len = key_len + val_len + 4; //':' + ' ' + '\r\n'
+      int key_len = current->key.count;
+      int val_len = strlen((char*)current->value);
+      int final_len = key_len+ val_len + 4; //':' + ' ' + '\r\n'
       if (it + final_len + 1 > full_headers_size) {
         full_headers_size *= 2;
         headers_str = realloc(headers_str, sizeof(char) * full_headers_size);
@@ -56,8 +56,7 @@ char *getAllHeaders(HashTable *headers) {
           return NULL;
         }
       }
-      sprintf(headers_str + it, "%s: %s\r\n", current->key,
-              (char *)current->value);
+      sprintf(headers_str + it, ""SV_Fmt": %s\r\n",SV_Arg(current->key),(char*)current->value);
       it += final_len;
 
       current = current->next;
@@ -72,8 +71,8 @@ char *responseToString(int *total_len, Response *res, Method m) {
   int current_len = strlen(status);
 
   int body_len = res->body == NULL ? 0 : strlen(res->body);
-  const char *content_len = getHeader("Content-Length", res->headers);
-  if (!content_len) {
+  StringView  content_len = getHeader("Content-Length", res->headers);
+  if (sv_eq(content_len,SV_NULL)) {
     char content_len_buf[32];
     snprintf(content_len_buf, sizeof(content_len_buf), "%d", body_len);
 
@@ -115,7 +114,7 @@ void freeResponse(Response **response) {
   if ((*response)->body != NULL)
     free((*response)->body);
   if ((*response)->headers != NULL)
-    freeTable(&(*response)->headers);
+    free_table(&(*response)->headers);
   free(*response);
   *response = NULL;
 }

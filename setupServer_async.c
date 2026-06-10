@@ -37,15 +37,13 @@ void handleRequest(Connection *con) {
     char req_path[PATH_MAX];
     char resolved_path[PATH_MAX];
     getPublicDir(public_path);
-    strncpy(req_path, public_path, PATH_MAX);
-    strncat(req_path, req->path, PATH_MAX - strlen(req_path) - 1);
-
+    snprintf(req_path, sizeof(req_path), "%s"SV_Fmt"", public_path, SV_Arg(req->path));
     char *r = realpath(req_path, resolved_path);
         
     if (r != NULL && strncmp(resolved_path, public_path, strlen(public_path)) == 0 && exists(req_path)) {
         con->state = SENDING_FILE_HEADERS;
         strncpy(con->file.filepath,req_path,strlen(req_path));
-        printf("%s %s 200\n", method, req->path);
+        printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
   } else {
         con->res = initResponse();
         Response* response = con->res;
@@ -55,21 +53,21 @@ void handleRequest(Connection *con) {
         Route *current_route = hasRoute(req->method, req->path);
         if (current_route != NULL) {
           current_route->callback(req, response);
-          printf("%s %s 200\n", method, req->path);
+          printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
         } else {
             if (req->method != HEAD) {
                 setStatus(404, response);
                 setResponseBody(not_found, response);
-                printf("%s %s 404\n", method, req->path);
+                printf("%s "SV_Fmt" 404\n", method, SV_Arg(req->path));
             } else {
                 current_route = hasRoute(GET, req->path);
                 if (current_route) {
                     current_route->callback(req, response);
-                    printf("%s %s 200\n", method, req->path);
+                    printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
                 } else {
                     setStatus(404, response);
                     setResponseBody(not_found, response);
-                    printf("%s %s 404\n", method, req->path);
+                    printf("%s "SV_Fmt" 404\n", method, SV_Arg(req->path));
                 }
             }
         }
@@ -254,7 +252,6 @@ int ev_loop(char* addr,int port) {
                             }
                         }
                         if(con->state == REQUEST_BUILT){
-                            memset(&con->data,0,sizeof(con->data)); 
                             handleRequest(con);
                             event.events = CONN_WRITE_FLAGS;
                             if(epoll_ctl(epoll_fd,EPOLL_CTL_MOD,con->client,&event) == -1){

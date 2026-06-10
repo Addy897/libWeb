@@ -8,24 +8,21 @@
 
 Request *initRequest() {
   Request *req = calloc(1, sizeof(Request));
-  req->body = NULL;
+  req->body = SV_NULL;
   req->headers = NULL;
   req->query_params = NULL;
-  req->path = NULL;
+  req->path =SV_NULL;
   return req;
 }
-const char *getParams(char *name, HashTable *params) {
+StringView getParams(char *name, HashTable *params) {
   return getHeader(name, params);
 }
 
 void freeRequest(Request **req) {
   if (!req || !*req)
     return;
-  free((*req)->path);
-  if((*req)->body !=NULL)
-    free((*req)->body);
-  freeTable(&(*req)->headers);
-  freeTable(&(*req)->query_params);
+  free_table(&(*req)->headers);
+  free_table(&(*req)->query_params);
   free(*req);
   *req = NULL;
 }

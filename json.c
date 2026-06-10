@@ -131,7 +131,7 @@ static JsonValue *parse_number(Parser *p) {
 static JsonValue *parse_object(Parser *p) {
     p->pos++; 
     JsonValue *v = make(JSON_OBJECT);
-    v->object = initTable(16);
+    v->object = init_table(16);
 
     skip_ws(p);
     if (p->src[p->pos] == '}') { p->pos++; return v; }
@@ -254,7 +254,7 @@ void json_free(JsonValue *val) {
                     e = e->next;
                 }
             }
-            freeTable(&val->object);
+            free_table(&val->object);
             break;
         default:
             break;

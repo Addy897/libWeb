@@ -12,6 +12,13 @@ typedef struct {
   struct HashTable *query_params;
 } Request;
 
+
+typedef struct {
+    char * data;
+    int count;
+}StringView;
+
+
 typedef struct {
   int code;
   const char *message;
@@ -31,7 +38,7 @@ void startServer(char *addr, int port);
 void setStatus(int status, Response *response);
 void addHeader(char *name, char *value, struct HashTable *headers);
 void removeHeader(char *name, struct HashTable *headers);
-const char *getHeader(char *name, struct HashTable *headers);
+StringView getHeader(char *name, struct HashTable *headers);
 char *getAllHeaders(struct HashTable *headers);
 void setResponseBody(char *body, Response *);
 void cleanupRoutes();

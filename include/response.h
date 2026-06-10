@@ -25,7 +25,7 @@ void setStatus(int status, Response *response);
 void addHeader(char *name, char *value, HashTable *headers);
 void removeHeader(char *name, HashTable *headers);
 
-const char *getHeader(char *name, HashTable *headers);
+StringView getHeader(char *name, HashTable *headers);
 char *getAllHeaders(HashTable *headers);
 void setResponseBody(char *body, Response *);
 

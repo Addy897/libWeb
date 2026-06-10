@@ -17,7 +17,7 @@ typedef struct JsonValue {
         int        boolean;   
         int        integer;   
         float      number;    
-        char      *string;    
+        char*      string;    
         HashTable *object;    
         struct {
             struct JsonValue **items;

@@ -5,13 +5,13 @@
 HashTable *routes = NULL;
 void initRoutes() {
   if (routes == NULL)
-    routes = initTable(MAX_ROUTES);
+    routes = init_table(MAX_ROUTES);
 }
-Route *hasRoute(Method method, char *path) {
+Route *hasRoute(Method method, StringView path) {
   if (routes == NULL)
     return NULL;
   char key[1024];
-  snprintf(key, 1024, "%s %s", methods[method], path);
+  snprintf(key, 1024, "%s "SV_Fmt"", methods[method],SV_Arg(path) );
 
   Route *current_route = (Route *)get(key, routes);
   return current_route;
@@ -29,5 +29,5 @@ void addRoute(Method method, char *path,
 
 void cleanupRoutes() {
   if (routes != NULL)
-    freeTable(&routes);
+    free_table(&routes);
 }
