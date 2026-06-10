@@ -77,6 +77,7 @@ int parse_status_line(Request* req,char * line){
     }
     return 1;
 }
+
 int parse_headers(Connection * conn){
     char * saved_ptr = conn->data.req.buf;
         
@@ -144,10 +145,13 @@ int build_request(Connection * conn) {
                 return ERR_CONTENT_TOO_LARGE;
         }
 
-        memcpy(conn->data.req.pos+conn->data.req.buf,buf,bytes_read);
-        conn->data.req.pos+=bytes_read;
-        conn->data.req.buf[conn->data.req.pos] = '\0';
         if(conn->state == PARSING_HEADERS){
+            if (bytes_read + conn->data.req.pos > sizeof(conn->data.req.buf) - 1) {
+                return ERR_CONTENT_TOO_LARGE;
+            }
+            memcpy(conn->data.req.pos+conn->data.req.buf,buf,bytes_read);
+            conn->data.req.pos+=bytes_read;
+            conn->data.req.buf[conn->data.req.pos] = '\0';
             int r = parse_headers(conn);
             if(r == ERR_PARSING_FAILED) return r;
         }
@@ -165,16 +169,25 @@ int build_request(Connection * conn) {
                 }
                if(conn->req->body_len < content_size){ 
                    if (!conn->req->body) {
-                      conn->req->body = strdup(conn->data.req.buf);
-                      conn->req->body_len = 0;
+                      conn->req->body = strdup(buf);
+                      conn->req->body_len = bytes_read;
                     } else {
-                      conn->req->body = realloc(conn->req->body, conn->req->body_len + conn->data.req.pos);
-                      if (!conn->req->body){
-                        perror("realloc failed!!");
-                        return ERR_MEMORY_ALLOCATION;
+                        char * temp = realloc(conn->req->body, conn->req->body_len + bytes_read+1);
+                        if (!temp){
+                            print_error("realloc failed!!");
+                            free(conn->req->body);
+                            conn->req->body = NULL;
+                            return ERR_MEMORY_ALLOCATION;
                         }
+                        conn->req->body = temp;
+                        memcpy(conn->req->body+conn->req->body_len,buf,bytes_read);
+                        conn->req->body_len += bytes_read;
                     }
-                    conn->req->body_len += conn->data.req.pos;
+                    if (conn->req->body_len >= content_size) {
+                        conn->req->body[conn->req->body_len] = '\0';
+                        conn->state = REQUEST_BUILT;
+                        return 1;
+                    }
               }else{
                     conn->state=REQUEST_BUILT;
                     return 1;
