@@ -17,6 +17,7 @@ static char *extensions[][2] = {{"gif", "image/gif"},
                                 {"css", "text/css"},
                                 {"json", "application/json"},
                                 {"pdf", "application/pdf"},
+                                {"wasm", "application/wasm"},
                                 {"zip", "application/octet-stream"},
                                 {"rar", "application/octet-stream"}};
 
