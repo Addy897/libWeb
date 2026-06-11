@@ -24,7 +24,9 @@ StringView sv_from_size(const char* data,size_t n){
 bool sv_eq(StringView left,StringView right){
      if(left.count != right.count){
         return false;
-     }else{
+     }else if(left.count ==0){
+        return true;
+    }else{
         return memcmp(left.data,right.data,left.count) == 0;
      }
 }

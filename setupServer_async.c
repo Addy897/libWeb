@@ -33,23 +33,25 @@ void handleRequest(Connection *con) {
     if(con->state != REQUEST_BUILT) return;
     Request * req = con->req;
     const char *method = methods[req->method];
-    char public_path[PATH_MAX];
     char req_path[PATH_MAX];
     char resolved_path[PATH_MAX];
-    getPublicDir(public_path);
-    snprintf(req_path, sizeof(req_path), "%s"SV_Fmt"", public_path, SV_Arg(req->path));
+    int req_path_len = PUBLIC_DIR_LEN + req->path.count;
+    memcpy(req_path, PUBLIC_DIR, PUBLIC_DIR_LEN);
+    memcpy(req_path + PUBLIC_DIR_LEN, req->path.data, req->path.count);
+    req_path[req_path_len] = '\0';
     char *r = realpath(req_path, resolved_path);
         
-    if (r != NULL && strncmp(resolved_path, public_path, strlen(public_path)) == 0 && exists(req_path)) {
+    if (r != NULL && strncmp(resolved_path, PUBLIC_DIR, PUBLIC_DIR_LEN) == 0 && exists(req_path)) {
         con->state = SENDING_FILE_HEADERS;
-        strncpy(con->file.filepath,req_path,strlen(req_path));
+        memcpy(con->file.filepath,req_path,req_path_len);
+        con->file.filepath[req_path_len] = '\0';
         //printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
   } else {
         con->res = initResponse();
         Response* response = con->res;
-        add_response_header("Connection", "keep-alive", response->headers);
-        add_response_header("Keep-Alive", "timeout=5, max=100", response->headers);
-        add_response_header("Content-Type", "text/html", response->headers);
+        add_response_header("connection", "keep-alive", response->headers);
+        add_response_header("keep-alive", "timeout=5, max=100", response->headers);
+        add_response_header("content-type", "text/html", response->headers);
         Route *current_route = hasRoute(req->method, req->path);
         if (current_route != NULL) {
           current_route->callback(req, response);
@@ -57,7 +59,7 @@ void handleRequest(Connection *con) {
         } else {
             if (req->method != HEAD) {
                 setStatus(404, response);
-                setResponseBody(not_found, response);
+                set_response_body_sv(sv_from_cltr(not_found), response);
                 //printf("%s "SV_Fmt" 404\n", method, SV_Arg(req->path));
             } else {
                 current_route = hasRoute(GET, req->path);
@@ -66,7 +68,7 @@ void handleRequest(Connection *con) {
                     //printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
                 } else {
                     setStatus(404, response);
-                    setResponseBody(not_found, response);
+                    set_response_body_sv(sv_from_cltr(not_found), response);
                     //printf("%s "SV_Fmt" 404\n", method, SV_Arg(req->path));
                 }
             }

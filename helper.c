@@ -1,14 +1,11 @@
 #include "include/helper.h"
 #include <sys/stat.h>
 #include<stdlib.h>
-char PUBLIC_DIR[PATH_MAX];
-void getPublicDir(char *path) {
-
-  strncpy(path, PUBLIC_DIR, strlen(PUBLIC_DIR));
-  path[strlen(PUBLIC_DIR)] = '\0';
-}
+char PUBLIC_DIR[PATH_MAX] = {0};
+size_t PUBLIC_DIR_LEN = 0;
 void setPublicDir(char *path) {
   char* r = realpath(path,PUBLIC_DIR);
+  PUBLIC_DIR_LEN = strlen(PUBLIC_DIR);
 }
 int hasExtension(char *filepath) {
 
@@ -28,9 +25,12 @@ int exists(char *fname) {
 }
 
 void toLowerCase(char *str) {
-    for (int i = 0; str[i]; i++) {
-        str[i] = tolower(str[i]);
+    for (size_t i = 0; str[i]; i++) {
+        if(str[i] >= 'A' && str[i] <= 'Z') {
+            str[i] += 32;         
+        }
     }
+
 }
 char *trim(char *str)
 {

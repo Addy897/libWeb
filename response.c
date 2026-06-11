@@ -6,11 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-
+#define HEADER_NAME_MAX 128
 Response *initResponse() {
   Response *response = malloc(sizeof(Response));
   (response)->status = StatusCodes[0];
-  (response)->body = NULL;
+  (response)->body = SV_NULL;
+  response->owns_body = false;
   (response)->headers = init_table(16);
   return response;
 }
@@ -23,6 +24,54 @@ void setStatus(int status, Response *response) {
   }
 }
 
+//static inline bool get_lowercase_header_name(const char *src, char *dst, size_t dst_size) {
+//    size_t i = 0;
+//    while (src[i] && i < dst_size - 1) {
+//        dst[i] = tolower((unsigned char)src[i]);
+//        i++;
+//    }
+//    dst[i] = '\0';
+//    return src[i] == '\0'; 
+//}
+//
+//void add_response_header(char *name, char *value, HashTable *headers) {
+//  if (headers == NULL)
+//    return;
+//
+//  char lower_name[HEADER_NAME_MAX] ;
+//  if (!get_lowercase_header_name(name, lower_name, sizeof(lower_name))) {
+//      return;   
+//  }
+//  
+//  add_with_deep_copy(lower_name, value, strlen(value) + 1, headers);
+//}
+//
+//void remove_response_header(char *name, HashTable *headers) {
+//  if (headers == NULL)
+//    return;
+//
+//  char lower_name[HEADER_NAME_MAX];
+//  if (!get_lowercase_header_name(name, lower_name, sizeof(lower_name))) {
+//      return;
+//  }
+//
+//  remove_key(lower_name, headers);
+//}
+//
+//StringView get_response_header(char *name, HashTable *headers) {
+//  if (headers == NULL)
+//    return SV_NULL;
+//
+//  char lower_name[HEADER_NAME_MAX];
+//  if (!get_lowercase_header_name(name, lower_name, sizeof(lower_name))) {
+//      return SV_NULL;
+//  }
+//
+//  const char * rh = get_as_cstr(lower_name, headers);
+//  if (!rh) return SV_NULL;
+//  return sv_from_cstr(rh);
+//}
+
 void add_response_header(char *name, char *value, HashTable *headers) {
   if (headers == NULL)
     return;
@@ -32,11 +81,13 @@ void add_response_header(char *name, char *value, HashTable *headers) {
 void remove_response_header(char *name, HashTable *headers) {
   if (headers == NULL)
     return;
+
   remove_key(name, headers);
 }
 StringView get_response_header(char *name, HashTable *headers) {
   if (headers == NULL)
     return SV_NULL;
+
   const char * rh = get_as_cstr(name, headers);
   if(!rh) return SV_NULL;
   return sv_from_cstr(rh);
@@ -78,16 +129,23 @@ int get_all_response_headers(char ** headers_str ,HashTable *headers) {
   }
   return it;
 }
-void setResponseBody(char *body, Response *res) { res->body = strdup(body); }
+void set_response_body(char *body, Response *res) { 
+    res->owns_body = true;
+    res->body = sv_from_cstr(strdup(body));
+     
+}
+void set_response_body_sv(StringView sv, Response *res) { 
+    res->owns_body = false;
+    res->body = sv; 
+}
 char *responseToString(int *total_len, Response *res, Method m) {
   char status[128];
   int current_len = snprintf(status,sizeof(status),"HTTP/1.1 %d %s\r\n",res->status.code,res->status.message);
 
-  int body_len = res->body == NULL ? 0 : strlen(res->body);
   StringView content_len = get_response_header("content-length", res->headers);
-  if (sv_eq(content_len,SV_NULL) && body_len>0) {
+  if (sv_eq(content_len,SV_NULL) && res->body.count >0) {
     char content_len_buf[32];
-    snprintf(content_len_buf, sizeof(content_len_buf), "%d", body_len);
+    snprintf(content_len_buf, sizeof(content_len_buf), "%zu", res->body.count);
     add_response_header("content-length", content_len_buf, res->headers);
   }
   char *full_headers = NULL;
@@ -97,23 +155,24 @@ char *responseToString(int *total_len, Response *res, Method m) {
         perror("Headers is NULL");
         return NULL;
   }
-  int full_len = current_len + headers_len + body_len + 2;
+  int full_len = current_len + headers_len + res->body.count + 2;
   char *data = malloc(full_len + 1);
-  data[full_len] = '\0';
   if(!data){
         *total_len = 0;
         perror("calloc for data failed");
         return NULL;
 
     }
+ 
+  data[full_len] = '\0';
   memcpy(data, status, current_len);
   memcpy(data + current_len, full_headers, headers_len);
   current_len += headers_len;
   memcpy(data + current_len, "\r\n", 2);
   current_len += 2;
-  if (body_len > 0 && m != HEAD) {
-    memcpy(data + current_len, res->body, body_len);
-    current_len += body_len;
+  if (res->body.count> 0 && m != HEAD) {
+    memcpy(data + current_len, res->body.data, res->body.count);
+    current_len += res->body.count;
   }
   free(full_headers);
   *total_len = current_len;
@@ -123,8 +182,10 @@ char *responseToString(int *total_len, Response *res, Method m) {
 void freeResponse(Response **response) {
   if (response == NULL)
     return;
-  if ((*response)->body != NULL)
-    free((*response)->body);
+  if ((*response)->owns_body && (*response)->body.data != NULL){
+     free((*response)->body.data);
+   }
+    (*response)->body.count =0;
   if ((*response)->headers != NULL)
     free_table(&(*response)->headers);
   free(*response);
@@ -141,10 +202,12 @@ void setBodyFromFile(char *pathname, Response *res) {
         return;
     }
 
-    res->body = malloc(st.st_size + 1);
-    if (res->body) {
-        read(fd, res->body, st.st_size);
-        res->body[st.st_size] = '\0';
+    char * temp = malloc(st.st_size + 1);
+    if (temp) {
+        read(fd, temp, st.st_size);
+        temp[st.st_size] = '\0';
+        res->owns_body = true;
+        res->body = sv_from_size(temp,st.st_size);
     }
     close(fd);
 }

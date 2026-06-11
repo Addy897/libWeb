@@ -148,13 +148,13 @@ int build_request(Connection * conn) {
                     conn->state = SENDING_RESPONSE;
                     conn->res = initResponse();
                     setStatus(413, conn->res);
-                    setResponseBody("Content Too Large", conn->res);
+                    set_response_body_sv(sv_from_cltr("Content Too Large"), conn->res);
                     return ERR_CONTENT_TOO_LARGE; 
                 }
                if(conn->req->body.count < content_size){ 
                    if (sv_eq(conn->req->body,SV_NULL)) {
-                      StringView buf = sv_from_size(conn->data.req.buf,conn->data.req.pos);
-                      conn->req->body = sv_split_sv(&buf,sv_from_cltr("\r\n\r\n")); 
+                      conn->req->body = sv_from_size(conn->data.req.buf,conn->data.req.pos);
+                      StringView temp = sv_split_sv(&conn->req->body,sv_from_cltr("\r\n\r\n")); 
                     } else {
                         if(conn->data.req.buf + conn->data.req.pos > conn->req->body.data + conn->req->body.count) 
                             conn->req->body.count += bytes_read;

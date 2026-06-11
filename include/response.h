@@ -13,7 +13,8 @@ typedef struct {
 typedef struct {
   StatusCode status;
   HashTable *headers;
-  char *body;
+  StringView body;
+  bool owns_body;
 } Response;
 
 static StatusCode StatusCodes[] = {{200, "OK"}, {404, "Not Found"}};
@@ -28,7 +29,8 @@ void remove_response_header(char *name, HashTable *headers);
 
 StringView get_response_header(char *name, HashTable *headers);
 int get_all_response_headers(char **, HashTable *headers);
-void setResponseBody(char *body, Response *);
+void set_response_body(char *body, Response *);
+void set_response_body_sv(StringView body, Response *);
 
 void setBodyFromFile(char *pathname, Response *res);
 char * responseToString(int *,Response*,Method);

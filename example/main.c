@@ -5,9 +5,9 @@ void indexH(Request *req, Response *res) {
 }
 void indexPost(Request *req, Response *res) {
   if (req->body.count > 0) {
-    setResponseBody(req->body.data, res);
+    set_response_body_sv(req->body, res);
   } else {
-    setResponseBody("{\"result\":\"Sucess\"}", res);
+    set_response_body("{\"result\":\"Sucess\"}", res);
   }
   add_response_header("content-type", "application/json", res->headers);
   StringView ct = get_response_header("content-type",res->headers);

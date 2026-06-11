@@ -36,5 +36,6 @@ void remove_response_header(char *name, struct HashTable *headers);
 StringView get_response_header(char *name, struct HashTable *headers);
 StringView get_request_header(char *name, struct HashTable *headers);
 int get_all_response_headers(char ** ,struct HashTable *headers);
-void setResponseBody(char *body, Response *);
+void set_response_body(char *body, Response *);
+void set_response_body_sv(StringView body, Response *);
 void cleanupRoutes();
