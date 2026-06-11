@@ -4,8 +4,8 @@ void indexH(Request *req, Response *res) {
   setBodyFromFile("./public/index.html", res);
 }
 void indexPost(Request *req, Response *res) {
-  if (req->body_len > 0) {
-    setResponseBody(req->body, res);
+  if (req->body.count > 0) {
+    setResponseBody(req->body.data, res);
   } else {
     setResponseBody("{\"result\":\"Sucess\"}", res);
   }

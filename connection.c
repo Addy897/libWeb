@@ -122,18 +122,20 @@ int build_request(Connection * conn) {
     int total_size = sizeof(conn->data.req.buf);
     int read_size = 4096;
     while(1){
-        bytes_read = recv(conn->client,conn->data.req.buf+conn->data.req.pos,read_size,0); 
-        if(bytes_read <=0) break;
-        if(conn->data.req.pos + bytes_read > BUFFER_MAX/2){
+        int space_left = BUFFER_MAX - conn->data.req.pos - 1;
+
+        if (space_left <= 0) {
             return ERR_CONTENT_TOO_LARGE;
         }
-        
-        conn->data.req.pos+=bytes_read;
 
+        bytes_read = recv(conn->client, conn->data.req.buf + conn->data.req.pos, space_left, 0); 
+        
+        if (bytes_read <= 0) {
+            break;
+        }
+        
+        conn->data.req.pos += bytes_read;
         if(conn->state == PARSING_HEADERS){
-            if (bytes_read + conn->data.req.pos > sizeof(conn->data.req.buf) - 1) {
-                return ERR_CONTENT_TOO_LARGE;
-            }
             int r = parse_headers(conn);
             if(r == ERR_PARSING_FAILED) return r;
         }

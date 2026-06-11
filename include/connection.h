@@ -6,7 +6,7 @@
 #include "response.h"
 #include <sys/epoll.h>
 
-#define BUFFER_MAX 65535
+#define BUFFER_MAX 8192
 
 
 enum STATE {

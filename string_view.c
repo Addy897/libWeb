@@ -1,6 +1,11 @@
 #include <ctype.h>
 #include <stdio.h>
 #include "include/string_view.h"
+
+
+#define  is_digit(x) ('0'<= x && x <= '9')
+#define  is_space(x) (x == ' ' || x == '\t' || x =='\r' || x == '\n' || x == '\v' || x == '\f')
+
 StringView sv_from_cstr(const char* data){
     StringView sv;
     sv.data = data;
@@ -27,7 +32,7 @@ bool sv_eq(StringView left,StringView right){
 
 StringView sv_trim_left(StringView sv){
     size_t i = 0;
-    while (i < sv.count && isspace(sv.data[i])) {
+    while (i < sv.count && is_space(sv.data[i])) {
         i += 1;
     }
 
@@ -36,7 +41,7 @@ StringView sv_trim_left(StringView sv){
 
 StringView sv_trim_right(StringView sv){
     size_t i = 0;
-    while (i < sv.count && isspace(sv.data[sv.count - 1 - i])) {
+    while (i < sv.count && is_space(sv.data[sv.count - 1 - i])) {
         i += 1;
     }
 
@@ -111,7 +116,6 @@ bool sv_eq_ignorecase(StringView left,StringView right){
     } 
     return true;
 }
-#define  is_digit(x) ('0'<= x && x <= '9')
 int sv_to_int(StringView sv){
     int res = 0;
     for(int i =0;i<sv.count && is_digit(sv.data[i]);i++){

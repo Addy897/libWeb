@@ -283,7 +283,9 @@ int ev_loop(char* addr,int port) {
                         if(con->state == RESPONSE_SENT){
                             freeRequest(&con->req);
                             freeResponse(&con->res);
-                            memset(&con->data, 0, sizeof(con->data)); 
+                            con->data.req.pos = 0;
+                            con->data.res.total_size = 0;
+                            con->data.res.bytes_sent = 0;
                             memset(&con->file, 0, sizeof(con->file)); 
                             con->state = PARSING_HEADERS;
                             event.events = CONN_READ_FLAGS;

@@ -6,10 +6,9 @@ struct HashTable;
 
 typedef struct {
   Method method;
-  char version[32];
-  int body_len;
-  char *path;
-  char *body;
+  StringView version;
+  StringView path;
+  StringView body;
   struct HashTable *headers;
   struct HashTable *query_params;
 } Request;
