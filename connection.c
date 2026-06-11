@@ -59,7 +59,11 @@ int parse_status_line(Request* req,StringView line){
     req->version = version;
     token = sv_trim(sv_split(&req_target,'?'));
     req->path = token;
-    HashTable * queries = init_table(16);
+    HashTable * queries;
+    if(!sv_eq(req_target,SV_NULL)){
+        queries = init_table(16);
+        req->query_params = queries;
+    }
     while (!sv_eq(req_target,SV_NULL)) {
         StringView query = sv_split(&req_target,'&');
         StringView key = sv_split(&query, '=');
@@ -69,11 +73,6 @@ int parse_status_line(Request* req,StringView line){
             continue;
         add_sv(key,&query,sizeof(StringView),queries,false);
     }
-    if(queries->entry_count > 0){
-        req->query_params = queries;
-    }else{
-        free_table(&queries);
-    } 
     return 1;
 }
 

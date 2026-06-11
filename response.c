@@ -138,14 +138,47 @@ void set_response_body_sv(StringView sv, Response *res) {
     res->owns_body = false;
     res->body = sv; 
 }
+static int fast_itoa(size_t val, char* buf) {
+    char temp[32];
+    int pos = 0;
+    if (val == 0) {
+        buf[0] = '0';
+        return 1;
+    }
+    while (val > 0) {
+        temp[pos++] = '0' + (val % 10);
+        val /= 10;
+    }
+    for (int i = 0; i < pos; i++) {
+        buf[i] = temp[pos - 1 - i];
+    }
+    buf[pos] = '\0';
+    return pos;
+}
+#define set_response_status(status,status_len,status_buf,res) \
+do{ \
+    switch(res->status.code){ \
+        case 200: \
+            status = "HTTP/1.1 200 OK\r\n"; \
+            status_len = 17; \
+            break; \
+        case 404: \
+            status = "HTTP/1.1 404 Not Found\r\n"; \
+            status_len = 24; \
+            break; \
+        default: \
+            status_len = snprintf(status_buf,sizeof(status_buf),"HTTP/1.1 %d %s\r\n",res->status.code,res->status.message); \
+    } \
+}while(0)
 char *responseToString(int *total_len, Response *res, Method m) {
-  char status[128];
-  int current_len = snprintf(status,sizeof(status),"HTTP/1.1 %d %s\r\n",res->status.code,res->status.message);
-
+  const char* status = NULL;
+  char status_buf[128];
+  int current_len = 0;
+  set_response_status(status,current_len,status_buf,res); 
   StringView content_len = get_response_header("content-length", res->headers);
   if (sv_eq(content_len,SV_NULL) && res->body.count >0) {
     char content_len_buf[32];
-    snprintf(content_len_buf, sizeof(content_len_buf), "%zu", res->body.count);
+    fast_itoa(res->body.count,content_len_buf);
     add_response_header("content-length", content_len_buf, res->headers);
   }
   char *full_headers = NULL;
@@ -165,7 +198,10 @@ char *responseToString(int *total_len, Response *res, Method m) {
     }
  
   data[full_len] = '\0';
-  memcpy(data, status, current_len);
+  if(status != NULL)
+    memcpy(data, status, current_len);
+  else
+    memcpy(data, status_buf, current_len);
   memcpy(data + current_len, full_headers, headers_len);
   current_len += headers_len;
   memcpy(data + current_len, "\r\n", 2);
@@ -193,7 +229,13 @@ void freeResponse(Response **response) {
 }
 
 void setBodyFromFile(char *pathname, Response *res) {
-    int fd = open(pathname, O_RDONLY);
+    StringView body = get_content(pathname,&FILE_CACHE);
+    if(!sv_eq(body,SV_NULL)){
+        res->body = body;
+        return;
+    }
+
+     int fd = open(pathname, O_RDONLY);
     if (fd < 0) return;
 
     struct stat st;
@@ -201,13 +243,14 @@ void setBodyFromFile(char *pathname, Response *res) {
         close(fd);
         return;
     }
-
+    
     char * temp = malloc(st.st_size + 1);
     if (temp) {
         read(fd, temp, st.st_size);
         temp[st.st_size] = '\0';
-        res->owns_body = true;
+        res->owns_body = false;
         res->body = sv_from_size(temp,st.st_size);
+        add_content(pathname,res->body,&FILE_CACHE);
     }
     close(fd);
 }

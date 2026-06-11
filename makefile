@@ -8,7 +8,7 @@ else
     RM = rm -f
 endif
 
-OBJS = mimeTypes.o routing.o helper.o setupServer_async.o connection.o request.o response.o json.o hash_table.o string_view.o
+OBJS = mimeTypes.o routing.o helper.o setupServer_async.o connection.o request.o response.o json.o hash_table.o cache_store.o string_view.o
 
 LIB = libWeb.a
 CC = gcc

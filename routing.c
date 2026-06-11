@@ -10,11 +10,18 @@ void initRoutes() {
 Route *hasRoute(Method method, StringView path) {
   if (routes == NULL)
     return NULL;
-  char key[1024];
-  snprintf(key, 1024, "%s "SV_Fmt"", methods[method],SV_Arg(path) );
+    char key[1024];
+    const char* method_str = methods[method];
+    int m_len = strlen(method_str); 
+    
+    if (m_len + 1 + path.count >= sizeof(key)) return NULL;
 
-  Route *current_route = (Route *)get(key, routes);
-  return current_route;
+    memcpy(key, method_str, m_len);
+    key[m_len] = ' ';
+    memcpy(key + m_len + 1, path.data, path.count);
+    key[m_len + 1 + path.count] = '\0';
+
+    return (Route *)get_from_sv(sv_from_size(key, m_len + 1 + path.count), routes);  
 }
 void addRoute(Method method, char *path,
               void (*callback)(Request *, Response *)) {

@@ -1,5 +1,5 @@
 #include "include/setupServer.h"
-
+#include "globals.h"
 #include "include/connection.h"
 #include "include/request.h"
 #include "include/response.h"
@@ -22,7 +22,7 @@ typedef struct {
     int port;
     int thread_id;
 } server_worker_arg_t;
-
+CacheStore FILE_CACHE;
 void handleRequest(Connection *con) {
    char not_found[] = "<html>"
                      "<head>"
@@ -318,6 +318,7 @@ void* server_thread_worker(void* arg) {
 }
 
 int startServer(char *addr, int port) {
+    FILE_CACHE = init_cache_store();
     int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
     printf("Detected %d CPU cores. Spawning workers...\n", num_cores);
 
@@ -338,8 +339,9 @@ int startServer(char *addr, int port) {
     // 2. Wait for all threads (they will run forever)
     for (int i = 0; i < num_cores; i++) {
         pthread_join(threads[i], NULL);
-    }
+    }   
 
+    free_cache_items(&FILE_CACHE);
     return 0;
 }
 

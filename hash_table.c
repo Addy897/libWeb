@@ -105,7 +105,8 @@ void add_sv(StringView sv, const void *value, int val_size, HashTable *table,boo
     unsigned int hashval = hash_sv(sv, table);
     HashEntry *entry = get_entry_sv(sv, table, hashval);
     if (entry == NULL) {
-        entry = calloc(1,sizeof(HashEntry));
+        entry = malloc(sizeof(HashEntry));
+        entry->next = NULL;
         entry->owns_key = deep_copy_key;
         entry->value = malloc(val_size);
         if(deep_copy_key){
