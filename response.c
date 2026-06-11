@@ -61,8 +61,17 @@ int get_all_response_headers(char ** headers_str ,HashTable *headers) {
         }
         *headers_str = tmp;
       }
-      sprintf(*headers_str + it, ""SV_Fmt": %s\r\n",SV_Arg(current->key),(char*)current->value);
-      it += final_len;
+      memcpy(*headers_str + it, current->key.data, key_len);
+      it += key_len;
+      (*headers_str)[it++] = ':';
+      (*headers_str)[it++] = ' ';
+      memcpy(*headers_str + it, current->value, val_len);
+      it += val_len;
+      (*headers_str)[it++] = '\r';
+      (*headers_str)[it++] = '\n';
+
+      //sprintf(*headers_str + it, ""SV_Fmt": %s\r\n",SV_Arg(current->key),(char*)current->value);
+      //it += final_len;
 
       current = current->next;
     }
@@ -139,4 +148,5 @@ void setBodyFromFile(char *pathname, Response *res) {
     }
     close(fd);
 }
+
 

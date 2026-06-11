@@ -119,13 +119,15 @@ int build_request(Connection * conn) {
     }
 
     int bytes_read = 0;
-    char buf[4096];
-    while((bytes_read = recv(conn->client, buf,sizeof(buf)-1 , 0)) > 0){
-        buf[bytes_read] = '\0'; 
-        if(bytes_read + conn->data.req.pos > sizeof(conn->data.req.buf) - 1){
-                return ERR_CONTENT_TOO_LARGE;
+    int total_size = sizeof(conn->data.req.buf);
+    int read_size = 4096;
+    while(1){
+        bytes_read = recv(conn->client,conn->data.req.buf+conn->data.req.pos,read_size,0); 
+        if(bytes_read <=0) break;
+        if(conn->data.req.pos + bytes_read > BUFFER_MAX/2){
+            return ERR_CONTENT_TOO_LARGE;
         }
-        memcpy(conn->data.req.pos+conn->data.req.buf,buf,bytes_read);
+        
         conn->data.req.pos+=bytes_read;
 
         if(conn->state == PARSING_HEADERS){

@@ -48,44 +48,46 @@ StringView sv_trim(StringView sv){
 }
 
 StringView sv_split(StringView * sv, const char delim){
-     size_t i = 0;
-    while (i < sv->count && sv->data[i] != delim) {
-        i += 1;
-    }
+    if (sv->count == 0 || !sv->data) return sv_from_size(sv->data, 0);
+
+    void *ptr = memchr(sv->data, delim, sv->count);
+    size_t i = ptr ? (size_t)((char*)ptr - sv->data) : sv->count;
+
     StringView result = sv_from_size(sv->data, i);
 
     if (i < sv->count) {
-        sv->count -= i + 1;
         sv->data  += i + 1;
-    }else{
-
-        sv->count -=i;
-        sv->data +=i;
+        sv->count -= i + 1;
+    } else {
+        sv->data += i;
+        sv->count = 0;
     }    
     return result;
 }
 
 StringView sv_split_sv(StringView * sv, StringView delim){
-    StringView window = sv_from_size(sv->data, delim.count);
+    if (delim.count == 0 || sv->count == 0 || !sv->data) return sv_from_size(sv->data, 0);
+    
     size_t i = 0;
-    while (i + delim.count < sv->count
-        && !(sv_eq(window, delim)))
-    {
+    while (i + delim.count <= sv->count) {
+        void *ptr = memchr(sv->data + i, delim.data[0], sv->count - i - delim.count + 1);
+        if (!ptr) break;
+        
+        i = (size_t)((char*)ptr - sv->data);
+        if (memcmp(sv->data + i, delim.data, delim.count) == 0) {
+            StringView result = sv_from_size(sv->data, i);
+            sv->data  += i + delim.count;
+            sv->count -= i + delim.count;
+            return result;
+        }
         i++;
-        window.data++;
     }
 
-    StringView result = sv_from_size(sv->data, i);
-
-    if (i + delim.count == sv->count) {
-        result.count += delim.count;
-    }
-
-    sv->data  += i + delim.count;
-    sv->count -= i + delim.count;
+    StringView result = sv_from_size(sv->data, sv->count);
+    sv->data += sv->count;
+    sv->count = 0;
 
     return result;
-
 }
 
 bool sv_eq_ignorecase(StringView left,StringView right){
@@ -109,10 +111,10 @@ bool sv_eq_ignorecase(StringView left,StringView right){
     } 
     return true;
 }
-
+#define  is_digit(x) ('0'<= x && x <= '9')
 int sv_to_int(StringView sv){
     int res = 0;
-    for(int i =0;i<sv.count && isdigit(sv.data[i]);i++){
+    for(int i =0;i<sv.count && is_digit(sv.data[i]);i++){
             res = res * 10 + (sv.data[i] - '0');
     }
     return res;
@@ -120,8 +122,11 @@ int sv_to_int(StringView sv){
 }
 
 StringView sv_to_lowercase(StringView sv){
-        for (int i = 0; i<sv.count; i++) {
-            sv.data[i] = tolower(sv.data[i]);
+    if (!sv.data) return sv;
+    for (size_t i = 0; i<sv.count; i++) {
+        if(sv.data[i] >= 'A' && sv.data[i] <= 'Z') {
+            sv.data[i] += 32;         
         }
+    }
     return sv; 
 }
