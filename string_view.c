@@ -115,8 +115,13 @@ int sv_to_int(StringView sv){
     for(int i =0;i<sv.count && isdigit(sv.data[i]);i++){
             res = res * 10 + (sv.data[i] - '0');
     }
-    return 0;
+    return res;
         
 }
 
-
+StringView sv_to_lowercase(StringView sv){
+        for (int i = 0; i<sv.count; i++) {
+            sv.data[i] = tolower(sv.data[i]);
+        }
+    return sv; 
+}

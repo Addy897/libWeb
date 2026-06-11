@@ -7,11 +7,7 @@ static unsigned int hash_sv(StringView sv, HashTable *table) {
     int i = 0;
     while (i < sv.count) {
         // hash = hash*33 + key[i]
-        char x = sv.data[i];
-        if(table->case_insensitive)
-            x = 'A' <= sv.data[i] && sv.data[i] <= 'Z' ? x+32:x;
-
-        hash = ((hash << 5) + hash) + x;
+        hash = ((hash << 5) + hash) + sv.data[i];
         i++;
     }
     return hash % table->capacity;
@@ -28,7 +24,6 @@ HashTable *init_table(int capacity) {
     hashtable->entries = calloc(capacity, sizeof(HashEntry *));
     hashtable->capacity = capacity;
     hashtable->entry_count = 0;
-    hashtable->case_insensitive = false;
     return hashtable;
 }
 void grow_table(HashTable *table) {
@@ -61,9 +56,6 @@ HashEntry *get_entry_sv(StringView sv, HashTable *table, unsigned int hashval) {
         return NULL;
     HashEntry *entry = table->entries[hashval];
     while (entry != NULL) {
-        if(table->case_insensitive && sv_eq_ignorecase(entry->key,sv)){
-            break;
-        }   
         if (sv_eq(entry->key,sv)) {
             break;
         }
@@ -81,13 +73,12 @@ void remove_key_sv(StringView key, HashTable *table) {
     HashEntry *prev = NULL;
 
     while (curr != NULL) {
-        if (sv_eq(curr->key, key) || (table->case_insensitive && sv_eq_ignorecase(curr->key,key))){
+        if (sv_eq(curr->key, key)){
             if (prev == NULL) {
                 table->entries[hashval] = curr->next;
             } else {
                 prev->next = curr->next;
             }
-            free(curr->key.data);
             curr->key.count = 0;
             curr->key.data = NULL;
             free(curr->value);
@@ -100,7 +91,7 @@ void remove_key_sv(StringView key, HashTable *table) {
     }
 }
 
-void add_sv(StringView sv, const void *value, int val_size, HashTable *table) {
+void add_sv(StringView sv, const void *value, int val_size, HashTable *table,bool deep_copy_key) {
     if (table == NULL || table->entries == NULL)
         return;
 
@@ -109,7 +100,10 @@ void add_sv(StringView sv, const void *value, int val_size, HashTable *table) {
     if (entry == NULL) {
         entry = malloc(sizeof(HashEntry));
         entry->value = malloc(val_size);
-        entry->key = sv_from_size(strndup(sv.data,sv.count),sv.count);
+        if(deep_copy_key)
+            entry->key = sv_from_size(strndup(sv.data,sv.count),sv.count);
+        else
+            entry->key = sv;
         entry->next = table->entries[hashval];
         table->entries[hashval] = entry;
         table->entry_count++;
@@ -142,7 +136,6 @@ void free_table(HashTable **hashtable) {
             while (current != NULL) {
                 HashEntry *temp = current;
                 current = current->next;
-                free(temp->key.data);
                 temp->key.count = 0;
                 temp->key.data = NULL;
                 free(temp->value);

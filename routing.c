@@ -24,7 +24,7 @@ void addRoute(Method method, char *path,
   Route new_route = {.method = method, .callback = callback};
   char key[1024];
   snprintf(key, 1024, "%s %s", methods[method], path);
-  add(key, &new_route, sizeof(new_route), routes);
+  add_with_deep_copy(key, &new_route, sizeof(new_route), routes);
 }
 
 void cleanupRoutes() {

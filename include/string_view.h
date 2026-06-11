@@ -25,6 +25,7 @@ StringView sv_trim_right(StringView sv);
 StringView sv_trim(StringView sv);
 StringView sv_split(StringView* sv, char delim);
 StringView sv_split_sv(StringView* sv, StringView delim);
+StringView sv_to_lowercase(StringView sv);
 
 int  sv_to_int(StringView sv);
 

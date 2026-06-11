@@ -71,11 +71,10 @@ char *responseToString(int *total_len, Response *res, Method m) {
   int current_len = strlen(status);
 
   int body_len = res->body == NULL ? 0 : strlen(res->body);
-  StringView  content_len = getHeader("Content-Length", res->headers);
-  if (sv_eq(content_len,SV_NULL)) {
+  StringView  content_len = getHeader("content-length", res->headers);
+  if (sv_eq(content_len,SV_NULL) && body_len > 0) {
     char content_len_buf[32];
     snprintf(content_len_buf, sizeof(content_len_buf), "%d", body_len);
-
     addHeader("Content-Length", content_len_buf, res->headers);
   }
   char *full_headers = getAllHeaders(res->headers);

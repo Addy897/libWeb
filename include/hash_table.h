@@ -13,7 +13,6 @@ typedef struct Entry {
 typedef struct {
   int capacity;
   int entry_count;
-  bool case_insensitive;
   HashEntry **entries;
 } HashTable;
 HashTable *init_table(int capacity);
@@ -43,8 +42,9 @@ const char*  get_as_cstr_sv(StringView sv, HashTable *table);
 float get_as_float_sv(StringView sv, HashTable *table);
 
 
-#define  add(key,value,val_size,table) add_sv(sv_from_cstr(key),value,val_size,table)
-void add_sv(StringView sv, const void *value, int val_size, HashTable *table);
+#define  add_with_deep_copy(key,value,val_size,table) add_sv(sv_from_cstr(key),value,val_size,table,true)
+#define  add(key,value,val_size,table) add_sv(sv_from_cstr(key),value,val_size,table,false)
+void add_sv(StringView sv, const void *value, int val_size, HashTable *table,bool deep_copy);
 
 #define  remove_key(key,table) remove_key_sv(sv_from_cstr(key),table)
 void remove_key_sv(StringView sv, HashTable *table);

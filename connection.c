@@ -57,7 +57,7 @@ int parse_status_line(Request* req,StringView line){
         return ERR_PARSING_FAILED;
     }
     req->version = version;
-    token = sv_split(&req_target,'?');
+    token = sv_trim(sv_split(&req_target,'?'));
     req->path = token;
     HashTable * queries = init_table(16);
     while (!sv_eq(req_target,SV_NULL)) {
@@ -67,7 +67,7 @@ int parse_status_line(Request* req,StringView line){
         query= sv_trim(query);
         if (sv_eq(key,SV_NULL) || sv_eq(query,SV_NULL))
             continue;
-        add_sv(key,&query,sizeof(StringView),queries);
+        add_sv(key,&query,sizeof(StringView),queries,false);
     }
     if(queries->entry_count > 0){
         req->query_params = queries;
@@ -91,7 +91,6 @@ int parse_headers(Connection * conn){
     }
     if(conn->req->headers == NULL){
         conn->req->headers = init_table(16);
-        conn->req->headers->case_insensitive = true;
     }
     while (!sv_eq(saved_ptr,SV_NULL)) {
         StringView line = sv_split(&saved_ptr,'\n');
@@ -99,12 +98,12 @@ int parse_headers(Connection * conn){
             conn->state = PARSING_BODY;
             break;
         }
-        StringView key = sv_trim(sv_split(&line,':'));
+        StringView key = sv_to_lowercase(sv_trim(sv_split(&line,':')));
         line = sv_trim(line);
         if(sv_eq(key,SV_NULL) || sv_eq(line,SV_NULL))
             continue;
        
-        add_sv(key, &line, sizeof(StringView), conn->req->headers);
+        add_sv(key, &line, sizeof(StringView), conn->req->headers,false);
     }
     conn->state = PARSING_BODY;
     return 0;
