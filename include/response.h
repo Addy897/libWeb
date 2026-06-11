@@ -22,11 +22,12 @@ static StatusCode StatusCodes[] = {{200, "OK"}, {404, "Not Found"}};
 
 Response *initResponse();
 void setStatus(int status, Response *response);
-void addHeader(char *name, char *value, HashTable *headers);
-void removeHeader(char *name, HashTable *headers);
 
-StringView getHeader(char *name, HashTable *headers);
-char *getAllHeaders(HashTable *headers);
+void add_response_header(char *name, char *value, HashTable *headers);
+void remove_response_header(char *name, HashTable *headers);
+
+StringView get_response_header(char *name, HashTable *headers);
+int get_all_response_headers(char **, HashTable *headers);
 void setResponseBody(char *body, Response *);
 
 void setBodyFromFile(char *pathname, Response *res);

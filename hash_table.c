@@ -28,8 +28,13 @@ HashTable *init_table(int capacity) {
 }
 void grow_table(HashTable *table) {
 
-    table->capacity *= 2;
-    HashEntry **new_entries = calloc(table->capacity, sizeof(HashEntry *));
+    int new_capacity = table->capacity * 2;
+
+    HashEntry **new_entries = calloc(new_capacity, sizeof(HashEntry *));
+
+    if (!new_entries)
+        return;
+    table->capacity = new_capacity;    
     if (table->entries != NULL) {
         for (int i = 0; i < table->capacity / 2; i++) {
             HashEntry *current = table->entries[i];
@@ -79,6 +84,8 @@ void remove_key_sv(StringView key, HashTable *table) {
             } else {
                 prev->next = curr->next;
             }
+            if(curr->owns_key)
+                free(curr->key.data);
             curr->key.count = 0;
             curr->key.data = NULL;
             free(curr->value);
@@ -98,10 +105,12 @@ void add_sv(StringView sv, const void *value, int val_size, HashTable *table,boo
     unsigned int hashval = hash_sv(sv, table);
     HashEntry *entry = get_entry_sv(sv, table, hashval);
     if (entry == NULL) {
-        entry = malloc(sizeof(HashEntry));
+        entry = calloc(1,sizeof(HashEntry));
+        entry->owns_key = deep_copy_key;
         entry->value = malloc(val_size);
-        if(deep_copy_key)
+        if(deep_copy_key){
             entry->key = sv_from_size(strndup(sv.data,sv.count),sv.count);
+        }
         else
             entry->key = sv;
         entry->next = table->entries[hashval];
@@ -110,8 +119,11 @@ void add_sv(StringView sv, const void *value, int val_size, HashTable *table,boo
         if (load_factor(table) >= 0.7)
             grow_table(table);
     } else {
+       void *tmp = malloc(val_size);
+       if (!tmp)
+            return;
         free(entry->value);
-        entry->value = malloc(val_size);
+        entry->value = tmp;    
     }
     memcpy(entry->value, value, val_size);
 
@@ -136,6 +148,8 @@ void free_table(HashTable **hashtable) {
             while (current != NULL) {
                 HashEntry *temp = current;
                 current = current->next;
+                if(temp->owns_key)
+                    free(temp->key.data);
                 temp->key.count = 0;
                 temp->key.data = NULL;
                 free(temp->value);

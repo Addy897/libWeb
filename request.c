@@ -14,8 +14,8 @@ Request *initRequest() {
   req->path =SV_NULL;
   return req;
 }
-StringView getParams(char *name, HashTable *params) {
-  return getHeader(name, params);
+StringView get_request_headers(char *name, HashTable *headers) {
+  return get_as_sv_s(name, headers);
 }
 
 void freeRequest(Request **req) {

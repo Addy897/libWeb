@@ -7,6 +7,7 @@
 #define DEFAULT_SIZE 100
 typedef struct Entry {
   StringView key;
+  bool owns_key;
   void *value;
   struct Entry *next;
 } HashEntry;

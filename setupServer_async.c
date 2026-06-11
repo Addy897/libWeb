@@ -43,31 +43,31 @@ void handleRequest(Connection *con) {
     if (r != NULL && strncmp(resolved_path, public_path, strlen(public_path)) == 0 && exists(req_path)) {
         con->state = SENDING_FILE_HEADERS;
         strncpy(con->file.filepath,req_path,strlen(req_path));
-        printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
+        //printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
   } else {
         con->res = initResponse();
         Response* response = con->res;
-        addHeader("Connection", "keep-alive", response->headers);
-        addHeader("Keep-Alive", "timeout=5, max=100", response->headers);
-        addHeader("Content-Type", "text/html", response->headers);
+        add_response_header("Connection", "keep-alive", response->headers);
+        add_response_header("Keep-Alive", "timeout=5, max=100", response->headers);
+        add_response_header("Content-Type", "text/html", response->headers);
         Route *current_route = hasRoute(req->method, req->path);
         if (current_route != NULL) {
           current_route->callback(req, response);
-          printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
+          //printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
         } else {
             if (req->method != HEAD) {
                 setStatus(404, response);
                 setResponseBody(not_found, response);
-                printf("%s "SV_Fmt" 404\n", method, SV_Arg(req->path));
+                //printf("%s "SV_Fmt" 404\n", method, SV_Arg(req->path));
             } else {
                 current_route = hasRoute(GET, req->path);
                 if (current_route) {
                     current_route->callback(req, response);
-                    printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
+                    //printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
                 } else {
                     setStatus(404, response);
                     setResponseBody(not_found, response);
-                    printf("%s "SV_Fmt" 404\n", method, SV_Arg(req->path));
+                    //printf("%s "SV_Fmt" 404\n", method, SV_Arg(req->path));
                 }
             }
         }

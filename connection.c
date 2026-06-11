@@ -228,7 +228,7 @@ int sendFile(Connection *con) {
             char data[1024];
             char *mime = getMiME(filepath);
             con->res = initResponse();
-            addHeader("Content-Type", mime, con->res->headers);
+            add_response_header("content-type", mime, con->res->headers);
             char s[32];
             int fd = open(filepath, O_RDONLY);
             if (fd == -1) {
@@ -245,7 +245,7 @@ int sendFile(Connection *con) {
             con->file.total_size = st.st_size;
             con->file.offset = 0;
             snprintf(s, sizeof(s), "%d", con->file.total_size);
-            addHeader("Content-Length", s, con->res->headers);
+            add_response_header("content-length", s, con->res->headers);
         }
         sendResponse(con);
         if(con->state == RESPONSE_SENT){

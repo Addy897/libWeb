@@ -1,3 +1,5 @@
+#include "string_view.h"
+
 #define getParams(name, params) getHeader(name, params)
 typedef enum { GET = 0, POST = 1, HEAD = 2 } Method;
 struct HashTable;
@@ -11,12 +13,6 @@ typedef struct {
   struct HashTable *headers;
   struct HashTable *query_params;
 } Request;
-
-
-typedef struct {
-    char * data;
-    int count;
-}StringView;
 
 
 typedef struct {
@@ -36,9 +32,10 @@ void addRoute(Method m, char *path,
               void (*callbackfunc)(Request *, Response *));
 void startServer(char *addr, int port);
 void setStatus(int status, Response *response);
-void addHeader(char *name, char *value, struct HashTable *headers);
-void removeHeader(char *name, struct HashTable *headers);
-StringView getHeader(char *name, struct HashTable *headers);
-char *getAllHeaders(struct HashTable *headers);
+void add_response_header(char *name, char *value, struct HashTable *headers);
+void remove_response_header(char *name, struct HashTable *headers);
+StringView get_response_header(char *name, struct HashTable *headers);
+StringView get_request_header(char *name, struct HashTable *headers);
+int get_all_response_headers(char ** ,struct HashTable *headers);
 void setResponseBody(char *body, Response *);
 void cleanupRoutes();
