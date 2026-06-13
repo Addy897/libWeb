@@ -11,14 +11,20 @@ typedef enum {
     JSON_OBJECT,
 } JsonType;
 
+
+typedef struct{
+    StringView sv;
+    bool owns_string;
+}JsonString;
+
 typedef struct JsonValue {
     JsonType type;
     union {
-        int        boolean;   
-        int        integer;   
-        float      number;    
-        char*      string;    
-        HashTable *object;    
+        int         boolean;   
+        int         integer;   
+        float       number;    
+        JsonString  string;    
+        HashTable*  object;    
         struct {
             struct JsonValue **items;
             int count;
@@ -29,7 +35,8 @@ typedef struct JsonValue {
 
 
 JsonValue *json_parse(const char *src);
-JsonValue *json_get(JsonValue *obj, const char *key);
+JsonValue *json_parse_sv(StringView src);
+JsonValue *json_get(JsonValue *obj, StringView key);
 JsonValue *json_index(JsonValue *arr, int i);
 
 void json_free(JsonValue *val);

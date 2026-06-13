@@ -5,9 +5,10 @@
 #include <ctype.h>
 
 typedef struct {
-    const char *src;
+    StringView src;
     int         pos;
-    int         error; 
+    int         error;
+    bool owns_src; 
 } Parser;
 
 static JsonValue *parse_value(Parser *p); 
@@ -15,7 +16,7 @@ static JsonValue *parse_value(Parser *p);
 
 
 static void skip_ws(Parser *p) {
-    while (p->src[p->pos] && isspace((unsigned char)p->src[p->pos]))
+    while (p->pos < p->src.count && isspace((unsigned char)p->src.data[p->pos]))
         p->pos++;
 }
 
@@ -44,29 +45,45 @@ static void array_push(JsonValue *arr, JsonValue *item) {
 
 
 
-static char *parse_raw_string(Parser *p) {
-    if (p->src[p->pos] != '"') { p->error = 1; return NULL; }
+bool parse_raw_string(StringView * res,Parser *p) {
+    res->count = 0;
+    res->data = NULL;
+    if (p->src.data[p->pos] != '"') { p->error = 1; return false; }
     p->pos++; 
 
     
     int start = p->pos;
     int len   = 0;
-    for (int i = start; p->src[i] && p->src[i] != '"'; ) {
-        if (p->src[i] == '\\') { i++; if (!p->src[i]) break; }
+    int has_escapes = false; 
+    for (int i = start; i < p->src.count && p->src.data[i] != '"'; ) {
+        if (p->src.data[i] == '\\') { 
+            i++;
+            has_escapes = true; 
+            if (!p->src.data[i]) break; 
+        }
         i++; len++;
     }
 
+    if(!has_escapes){
+        StringView temp = sv_from_size(p->src.data+start,len);
+        p->pos = start + len;
+        if (p->src.data[p->pos] == '"') p->pos++;         
+        res->data = temp.data;
+        res->count = temp.count;
+        return has_escapes;
+    
+    }
+ 
     char *out = malloc(len + 1);
-    if (!out) { p->error = 1; return NULL; }
+    if (!out) { p->error = 1; return false; }
     int n = 0;
-
-    while (p->src[p->pos] && p->src[p->pos] != '"') {
-        if (p->src[p->pos] != '\\') {
-            out[n++] = p->src[p->pos++];
+    while (p->pos < p->src.count && p->src.data[p->pos] != '"') {
+        if (p->src.data[p->pos] != '\\') {
+            out[n++] = p->src.data[p->pos++];
             continue;
         }
         p->pos++; 
-        switch (p->src[p->pos]) {
+        switch (p->src.data[p->pos]) {
             case '"':  out[n++] = '"';  break;
             case '\\': out[n++] = '\\'; break;
             case '/':  out[n++] = '/';  break;
@@ -78,41 +95,44 @@ static char *parse_raw_string(Parser *p) {
             case 'u':
                 
                 out[n++] = '?';
-                for (int k = 0; k < 4 && p->src[p->pos + 1]; k++) p->pos++;
+                for (int k = 0; k < 4 && p->src.count > p->pos + 1; k++) p->pos++;
                 break;
             default:
-                out[n++] = p->src[p->pos];
+                out[n++] = p->src.data[p->pos];
                 break;
         }
         p->pos++;
     }
     out[n] = '\0';
-
-    if (p->src[p->pos] == '"') p->pos++; 
-    else { free(out); p->error = 1; return NULL; }
-
-    return out;
+    StringView temp = sv_from_size(out,n);
+    if (p->src.data[p->pos] == '"') p->pos++; 
+    else { free(out); p->error = 1; return false; }
+    res->data = temp.data;
+    res->count = temp.count;
+    return true;
 }
 
 
 
 static JsonValue *parse_string(Parser *p) {
-    char *s = parse_raw_string(p);
-    if (!s) return NULL;
+    StringView s;
+    bool owns = parse_raw_string(&s,p);
+    if (sv_eq(s,SV_NULL)) return NULL;
     JsonValue *v = make(JSON_STRING);
-    v->string = s;
+    v->string.sv = s;
+    v->string.owns_string = owns;
     return v;
 }
 
 static JsonValue *parse_number(Parser *p) {
-    const char *start = p->src + p->pos;
+    const char *start = p->src.data + p->pos;
 
     
     int is_float = 0;
     int i = p->pos;
-    if (p->src[i] == '-') i++;
-    while (isdigit((unsigned char)p->src[i])) i++;
-    if (p->src[i] == '.' || p->src[i] == 'e' || p->src[i] == 'E')
+    if (p->src.data[i] == '-') i++;
+    while (isdigit((unsigned char)p->src.data[i])) i++;
+    if (p->src.data[i] == '.' || p->src.data[i] == 'e' || p->src.data[i] == 'E')
         is_float = 1;
 
     char *end;
@@ -134,29 +154,42 @@ static JsonValue *parse_object(Parser *p) {
     v->object = init_table(16);
 
     skip_ws(p);
-    if (p->src[p->pos] == '}') { p->pos++; return v; }
+    if (p->src.data[p->pos] == '}') { p->pos++; return v; }
 
-    while (p->src[p->pos] && !p->error) {
+    while (p->src.data[p->pos] && !p->error) {
         skip_ws(p);
         
-        char *key = parse_raw_string(p);
-        if (!key) break;
+        StringView key;
+        bool owns_key = parse_raw_string(&key,p);
+        if (sv_eq(key,SV_NULL)) break;
 
         skip_ws(p);
-        if (p->src[p->pos] != ':') { free(key); p->error = 1; break; }
+        if (p->src.data[p->pos] != ':') { 
+            if(owns_key)
+                free(key.data); 
+            p->error = 1;
+            break; 
+        }
         p->pos++; 
 
         skip_ws(p);
         JsonValue *val = parse_value(p);
         if (val) {
-            
-            add(key, &val, sizeof(JsonValue *), v->object);
+             bool deep_copy = false;
+            if(owns_key){
+                deep_copy = true;
+                add_sv(key, &val, sizeof(JsonValue *), v->object,deep_copy);
+                free(key.data);
+                key.data = NULL;
+                key.count = 0;
+            }else{
+                add_sv(key, &val, sizeof(JsonValue *), v->object,deep_copy);
+            }
         }
-        free(key); 
 
         skip_ws(p);
-        if (p->src[p->pos] == ',') { p->pos++; continue; }
-        if (p->src[p->pos] == '}') { p->pos++; break; }
+        if (p->src.data[p->pos] == ',') { p->pos++; continue; }
+        if (p->src.data[p->pos] == '}') { p->pos++; break; }
         p->error = 1; break;
     }
     return v;
@@ -167,16 +200,16 @@ static JsonValue *parse_array(Parser *p) {
     JsonValue *v = make(JSON_ARRAY);
 
     skip_ws(p);
-    if (p->src[p->pos] == ']') { p->pos++; return v; }
+    if (p->src.data[p->pos] == ']') { p->pos++; return v; }
 
-    while (p->src[p->pos] && !p->error) {
+    while (p->src.count > p->pos && !p->error) {
         skip_ws(p);
         JsonValue *item = parse_value(p);
         if (item) array_push(v, item);
 
         skip_ws(p);
-        if (p->src[p->pos] == ',') { p->pos++; continue; }
-        if (p->src[p->pos] == ']') { p->pos++; break; }
+        if (p->src.data[p->pos] == ',') { p->pos++; continue; }
+        if (p->src.data[p->pos] == ']') { p->pos++; break; }
         p->error = 1; break;
     }
     return v;
@@ -184,7 +217,7 @@ static JsonValue *parse_array(Parser *p) {
 
 static JsonValue *parse_value(Parser *p) {
     skip_ws(p);
-    char c = p->src[p->pos];
+    char c = p->src.data[p->pos];
     if (p->error) return NULL;
 
     if (c == '"') return parse_string(p);
@@ -192,15 +225,15 @@ static JsonValue *parse_value(Parser *p) {
     if (c == '[') return parse_array(p);
     if (c == '-' || isdigit((unsigned char)c)) return parse_number(p);
 
-    if (strncmp(p->src + p->pos, "true",  4) == 0) {
+    if (strncmp(p->src.data + p->pos, "true",  4) == 0) {
         p->pos += 4;
         JsonValue *v = make(JSON_BOOL); v->boolean = 1; return v;
     }
-    if (strncmp(p->src + p->pos, "false", 5) == 0) {
+    if (strncmp(p->src.data + p->pos, "false", 5) == 0) {
         p->pos += 5;
         JsonValue *v = make(JSON_BOOL); v->boolean = 0; return v;
     }
-    if (strncmp(p->src + p->pos, "null",  4) == 0) {
+    if (strncmp(p->src.data + p->pos, "null",  4) == 0) {
         p->pos += 4;
         return make(JSON_NULL);
     }
@@ -209,20 +242,26 @@ static JsonValue *parse_value(Parser *p) {
     return NULL;
 }
 
-
-
-JsonValue *json_parse(const char *src) {
-    if (!src) return NULL;
+JsonValue *json_parse_sv(StringView src) {
+    if (sv_eq(src,SV_NULL)) return NULL;
     Parser p = { src, 0, 0 };
     JsonValue *root = parse_value(&p);
     if (p.error) { json_free(root); return NULL; }
     return root;
 }
 
-JsonValue *json_get(JsonValue *obj, const char *key) {
+JsonValue *json_parse(const char * src) {
+    if (!src) return NULL;
+    Parser p = { sv_from_cstr(src), 0, 0 };
+    JsonValue *root = parse_value(&p);
+    if (p.error) { json_free(root); return NULL; }
+    return root;
+}
+
+JsonValue *json_get(JsonValue *obj, StringView key) {
     if (!obj || obj->type != JSON_OBJECT) return NULL;
     
-    void *slot = get((char *)key, obj->object);
+    void *slot = get_from_sv(key, obj->object);
     if (!slot) return NULL;
     return *(JsonValue **)slot;
 }
@@ -237,7 +276,10 @@ void json_free(JsonValue *val) {
     if (!val) return;
     switch (val->type) {
         case JSON_STRING:
-            free(val->string);
+            if(val->string.owns_string)
+                free(val->string.sv.data);
+            val->string.sv = SV_NULL;
+            val->string.owns_string=false;
             break;
         case JSON_ARRAY:
             for (int i = 0; i < val->array.count; i++)
@@ -269,7 +311,7 @@ void json_print(JsonValue *val, int indent) {
         case JSON_BOOL:   printf("%s", val->boolean ? "true" : "false"); break;
         case JSON_INT:    printf("%d",  val->integer); break;
         case JSON_FLOAT:  printf("%g",  val->number);  break;
-        case JSON_STRING: printf("\"%s\"", val->string); break;
+        case JSON_STRING: printf("\""SV_Fmt"\"", SV_Arg(val->string.sv)); break;
         case JSON_ARRAY:
             printf("[\n");
             for (int i = 0; i < val->array.count; i++) {
