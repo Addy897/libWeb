@@ -49,9 +49,9 @@ void handleRequest(Connection *con) {
   } else {
         con->res = initResponse();
         Response* response = con->res;
-        add_response_header("connection", "keep-alive", response->headers);
-        add_response_header("keep-alive", "timeout=5, max=100", response->headers);
-        add_response_header("content-type", "text/html", response->headers);
+        add_response_header("connection", "keep-alive", response);
+        add_response_header("keep-alive", "timeout=5, max=100", response);
+        add_response_header("content-type", "text/html", response);
         Route *current_route = hasRoute(req->method, req->path);
         if (current_route != NULL) {
           current_route->callback(req, response);
