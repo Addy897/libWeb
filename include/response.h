@@ -25,9 +25,12 @@ Response *initResponse();
 void setStatus(int status, Response *response);
 
 void add_response_header(char *name, char *value, HashTable *headers);
+void add_response_header_sv(StringView name, char *value, HashTable *headers);
 void remove_response_header(char *name, HashTable *headers);
+void remove_response_header_sv(StringView name, HashTable *headers);
 
 StringView get_response_header(char *name, HashTable *headers);
+StringView get_response_header_sv(StringView name, HashTable *headers);
 int get_all_response_headers(char **, HashTable *headers);
 void set_response_body(char *body, Response *);
 void set_response_body_sv(StringView body, Response *);

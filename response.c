@@ -24,54 +24,12 @@ void setStatus(int status, Response *response) {
   }
 }
 
-//static inline bool get_lowercase_header_name(const char *src, char *dst, size_t dst_size) {
-//    size_t i = 0;
-//    while (src[i] && i < dst_size - 1) {
-//        dst[i] = tolower((unsigned char)src[i]);
-//        i++;
-//    }
-//    dst[i] = '\0';
-//    return src[i] == '\0'; 
-//}
-//
-//void add_response_header(char *name, char *value, HashTable *headers) {
-//  if (headers == NULL)
-//    return;
-//
-//  char lower_name[HEADER_NAME_MAX] ;
-//  if (!get_lowercase_header_name(name, lower_name, sizeof(lower_name))) {
-//      return;   
-//  }
-//  
-//  add_with_deep_copy(lower_name, value, strlen(value) + 1, headers);
-//}
-//
-//void remove_response_header(char *name, HashTable *headers) {
-//  if (headers == NULL)
-//    return;
-//
-//  char lower_name[HEADER_NAME_MAX];
-//  if (!get_lowercase_header_name(name, lower_name, sizeof(lower_name))) {
-//      return;
-//  }
-//
-//  remove_key(lower_name, headers);
-//}
-//
-//StringView get_response_header(char *name, HashTable *headers) {
-//  if (headers == NULL)
-//    return SV_NULL;
-//
-//  char lower_name[HEADER_NAME_MAX];
-//  if (!get_lowercase_header_name(name, lower_name, sizeof(lower_name))) {
-//      return SV_NULL;
-//  }
-//
-//  const char * rh = get_as_cstr(lower_name, headers);
-//  if (!rh) return SV_NULL;
-//  return sv_from_cstr(rh);
-//}
-
+void add_response_header_sv(StringView name, char *value, HashTable *headers) {
+  if (headers == NULL)
+    return;
+  
+  add_sv(name, value, strlen(value) + 1, headers,false);
+}
 void add_response_header(char *name, char *value, HashTable *headers) {
   if (headers == NULL)
     return;
@@ -83,6 +41,20 @@ void remove_response_header(char *name, HashTable *headers) {
     return;
 
   remove_key(name, headers);
+}
+void remove_response_header_sv(StringView name, HashTable *headers) {
+  if (headers == NULL)
+    return;
+
+  remove_key_sv(name, headers);
+}
+StringView get_response_header_sv(StringView name, HashTable *headers) {
+  if (headers == NULL)
+    return SV_NULL;
+
+  const char * rh = get_as_cstr_sv(name, headers);
+  if(!rh) return SV_NULL;
+  return sv_from_cstr(rh);
 }
 StringView get_response_header(char *name, HashTable *headers) {
   if (headers == NULL)
