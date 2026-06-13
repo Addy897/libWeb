@@ -14,11 +14,11 @@ Request *initRequest() {
   req->path =SV_NULL;
   return req;
 }
-StringView get_request_header(char *name, HashTable *headers) {
-  return get_as_sv_s(name, headers);
+StringView get_request_header(char *name, Request *req) {
+  return get_as_sv_s(name, req->headers);
 }
-StringView get_request_header_sv(StringView name, HashTable *headers) {
-    return get_as_sv(name, headers);
+StringView get_request_header_sv(StringView name, Request *req) {
+    return get_as_sv(name, req->headers);
 }
 void freeRequest(Request **req) {
   if (!req || !*req)

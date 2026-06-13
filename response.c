@@ -24,52 +24,52 @@ void setStatus(int status, Response *response) {
   }
 }
 
-void add_response_header_sv(StringView name, char *value, HashTable *headers) {
-  if (headers == NULL)
+void add_response_header_sv(StringView name, char *value, Response *res) {
+  if (res->headers == NULL)
     return;
   
-  add_sv(name, value, strlen(value) + 1, headers,false);
+  add_sv(name, value, strlen(value) + 1, res->headers,false);
 }
-void add_response_header(char *name, char *value, HashTable *headers) {
-  if (headers == NULL)
+void add_response_header(char *name, char *value, Response *res) {
+  if (res->headers == NULL)
     return;
   
-  add(name, value, strlen(value) + 1, headers);
+  add(name, value, strlen(value) + 1, res->headers);
 }
-void remove_response_header(char *name, HashTable *headers) {
-  if (headers == NULL)
+void remove_response_header(char *name, Response *res) {
+  if (res->headers == NULL)
     return;
 
-  remove_key(name, headers);
+  remove_key(name, res->headers);
 }
-void remove_response_header_sv(StringView name, HashTable *headers) {
-  if (headers == NULL)
+void remove_response_header_sv(StringView name, Response *res) {
+  if (res->headers == NULL)
     return;
 
-  remove_key_sv(name, headers);
+  remove_key_sv(name, res->headers);
 }
-StringView get_response_header_sv(StringView name, HashTable *headers) {
-  if (headers == NULL)
+StringView get_response_header_sv(StringView name, Response *res) {
+  if (res->headers == NULL)
     return SV_NULL;
 
-  const char * rh = get_as_cstr_sv(name, headers);
+  const char * rh = get_as_cstr_sv(name, res->headers);
   if(!rh) return SV_NULL;
   return sv_from_cstr(rh);
 }
-StringView get_response_header(char *name, HashTable *headers) {
-  if (headers == NULL)
+StringView get_response_header(char *name, Response *res) {
+  if (res->headers == NULL)
     return SV_NULL;
 
-  const char * rh = get_as_cstr(name, headers);
+  const char * rh = get_as_cstr(name, res->headers);
   if(!rh) return SV_NULL;
   return sv_from_cstr(rh);
 }
-int get_all_response_headers(char ** headers_str ,HashTable *headers) {
+int get_all_response_headers(char ** headers_str, Response *res) {
   int full_headers_size = 256;
   *headers_str = malloc(sizeof(char) * full_headers_size);
   int it = 0;
-  for (int i = 0; i < headers->capacity; i++) {
-    HashEntry *current = headers->entries[i];
+  for (int i = 0; i < res->headers->capacity; i++) {
+    HashEntry *current = res->headers->entries[i];
     while (current != NULL) {
       int key_len = current->key.count;
       int val_len = strlen((char*)current->value);
@@ -115,6 +115,7 @@ static int fast_itoa(size_t val, char* buf) {
     int pos = 0;
     if (val == 0) {
         buf[0] = '0';
+        buf[1] = '\0';
         return 1;
     }
     while (val > 0) {
@@ -147,14 +148,14 @@ char *responseToString(int *total_len, Response *res, Method m) {
   char status_buf[128];
   int current_len = 0;
   set_response_status(status,current_len,status_buf,res); 
-  StringView content_len = get_response_header("content-length", res->headers);
+  StringView content_len = get_response_header("content-length", res);
   if (sv_eq(content_len,SV_NULL) && res->body.count >0) {
     char content_len_buf[32];
     fast_itoa(res->body.count,content_len_buf);
-    add_response_header("content-length", content_len_buf, res->headers);
+    add_response_header("content-length", content_len_buf, res);
   }
   char *full_headers = NULL;
-  int headers_len = get_all_response_headers(&full_headers,res->headers);
+  int headers_len = get_all_response_headers(&full_headers,res);
   if(!full_headers){
        *total_len = 0;
         perror("Headers is NULL");

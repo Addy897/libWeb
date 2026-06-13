@@ -31,8 +31,8 @@ typedef struct {
 
 Request *initRequest();
 
-#define get_request_params(name, params) get_request_header(name, headers)
-StringView get_request_header(char *name, HashTable *headers);
-StringView get_request_header_sv(StringView name, HashTable *headers);
+#define get_request_params(name, request) get_request_header(name, request)
+StringView get_request_header(char *name, Request* req);
+StringView get_request_header_sv(StringView name, Request * req);
 void freeRequest(Request **req);
 #endif
