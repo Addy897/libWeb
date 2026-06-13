@@ -12,4 +12,8 @@
 #define MAXCONN 8192
 #define BUFF_SIZE 1024
 static SOCKET server = INVALID_SOCKET;
+
+int startServer(char *addr, int port);
+
+
 #endif

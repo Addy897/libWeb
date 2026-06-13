@@ -8,7 +8,6 @@
 
 Connection * init_connection(){
     Connection * con = calloc(1,sizeof(Connection));
-    memset(&con->data,0,sizeof(con->data));
     return con;
 }
 void free_connection(Connection ** con){
