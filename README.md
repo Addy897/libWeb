@@ -246,7 +246,7 @@ libWeb/
 ├── example/
 │   ├── main.c                # Example server
 │   ├── main.h
-│   ├── string_view.h
+│   ├── libWeb.h              # Header for libWeb library
 │   └── public/               # Static files served by the example
 │       ├── index.html
 │       ├── css/style.css
