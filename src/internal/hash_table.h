@@ -11,7 +11,7 @@ typedef struct Entry {
   void *value;
   struct Entry *next;
 } HashEntry;
-typedef struct {
+typedef struct HashTable{
   int capacity;
   int entry_count;
   HashEntry **entries;

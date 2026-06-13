@@ -9,8 +9,8 @@ void indexPost(Request *req, Response *res) {
   } else {
     set_response_body("{\"result\":\"Sucess\"}", res);
   }
-  add_response_header("content-type", "application/json", res->headers);
-  StringView ct = get_response_header("content-type",res->headers);
+  add_response_header("content-type", "application/json", res);
+  StringView ct = get_response_header("content-type",res);
   if(!sv_eq(ct,SV_NULL))
     printf("CT: "SV_Fmt"\n",SV_Arg(ct));
   

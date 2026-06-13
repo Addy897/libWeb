@@ -1,9 +1,11 @@
-#include "include/setupServer.h"
+#include "setup_server.h"
 #include "globals.h"
-#include "include/connection.h"
-#include "include/request.h"
-#include "include/response.h"
-#include "include/routing.h"
+#include "compat.h"
+
+#include "connection.h"
+#include "request.h"
+#include "response.h"
+#include "routing.h"
 #include <limits.h>
 #include <stdlib.h>
 
@@ -13,10 +15,12 @@
 	#include <winerror.h>
 #endif
 
+#define MAXCONN 8192
+#define BUFF_SIZE 1024
 #define CONN_READ_FLAGS  (EPOLLIN  | EPOLLONESHOT | EPOLLET | EPOLLRDHUP)
 #define CONN_WRITE_FLAGS (EPOLLOUT | EPOLLONESHOT | EPOLLET)
 #define MAX_EVENTS 4096
-
+SOCKET server = INVALID_SOCKET;
 typedef struct {
     char *addr;
     int port;

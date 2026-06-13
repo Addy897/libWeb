@@ -1,8 +1,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "include/connection.h"
-#include "include/string_view.h"
+#include "connection.h"
+#include "compat.h"
+#include "globals.h"
+#include "string_view.h"
 #include <sys/sendfile.h>
 
 

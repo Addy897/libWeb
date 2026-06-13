@@ -4,6 +4,10 @@
 #include "errors.h"
 #include "request.h"
 #include "response.h"
+#include "globals.h"
+#include "mime_types.h"
+#include "helper.h"
+
 #include <sys/epoll.h>
 
 #define BUFFER_MAX 8192

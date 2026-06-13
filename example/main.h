@@ -1,4 +1,3 @@
-#include "libWeb.h"
+#include "Web.h"
 
-#define getParams(name, params) getHeader(name, params)
 

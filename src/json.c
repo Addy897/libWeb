@@ -1,4 +1,5 @@
-#include "include/json.h"
+#include "json.h"
+#include "hash_table.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

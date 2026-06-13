@@ -1,8 +1,12 @@
-#include "include/helper.h"
+#include "helper.h"
+#include "globals.h"
 #include <sys/stat.h>
 #include<stdlib.h>
+ 
 char PUBLIC_DIR[PATH_MAX] = {0};
 size_t PUBLIC_DIR_LEN = 0;
+
+
 void setPublicDir(char *path) {
   char* r = realpath(path,PUBLIC_DIR);
   PUBLIC_DIR_LEN = strlen(PUBLIC_DIR);

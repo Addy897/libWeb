@@ -1,6 +1,9 @@
-#include "include/routing.h"
-#include "include/request.h"
+#include "routing.h"
+#include "request.h"
+#include "hash_table.h"
+#include "globals.h"
 #include <stdio.h>
+
 
 HashTable *routes = NULL;
 void initRoutes() {

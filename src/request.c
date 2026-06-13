@@ -1,8 +1,7 @@
-#include "include/request.h"
-#include "include/response.h"
-#include "include/helper.h"
-
-#include "include/hash_table.h"
+#include "request.h"
+#include "response.h"
+#include "helper.h"
+#include "hash_table.h"
 #include <stdlib.h>
 #include <string.h>
 

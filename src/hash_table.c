@@ -1,4 +1,4 @@
-#include "include/hash_table.h"
+#include "hash_table.h"
 
 static unsigned int hash_sv(StringView sv, HashTable *table) {
     if (table == NULL)

@@ -1,12 +1,23 @@
-#include "include/response.h"
-#include "include/hash_table.h"
-#include "include/helper.h"
-#include "include/request.h"
+#include "response.h"
+#include "hash_table.h"
+#include "cache_store.h"
+#include "helper.h"
+#include "globals.h"
+#include "request.h"
+
+#include <unistd.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+
 #define HEADER_NAME_MAX 128
+
+StatusCode StatusCodes[] = {{200, "OK"}, {404, "Not Found"}};
+#define STATUS_COUNT (sizeof(StatusCodes) / sizeof(StatusCode))
+
+
 Response *initResponse() {
   Response *response = malloc(sizeof(Response));
   (response)->status = StatusCodes[0];
