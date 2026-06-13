@@ -14,7 +14,7 @@ LIB = libWeb.a
 CC = gcc
 OUT_DIR = out
 
-CFLAGS = -I"./include/" -ggdb -O2 -fno-omit-frame-pointer -pthread
+CFLAGS = -I"./include/" -ggdb -O2 -fno-omit-frame-pointer -pthread -Wno-discarded-qualifiers
 LIB_PATH = -L$(OUT_DIR) -lWeb
 
 all: $(OUT_DIR)/$(LIB)
@@ -25,7 +25,7 @@ all: $(OUT_DIR)/$(LIB)
 $(OUT_DIR)/$(LIB): $(OBJS)
 	mkdir -p $(OUT_DIR)
 	ar rcs $(OUT_DIR)/$(LIB) $(OBJS)
-
+.PHONY: example
 example: example/main.c $(OUT_DIR)/$(LIB)
 	$(CC) $(CFLAGS) example/main.c $(LIB_PATH) $(LIBS) -o example/main$(EXEC_EXT)
 
