@@ -40,16 +40,16 @@ struct file_res_states{
 
 };
 
-struct data_u{
+typedef struct data_u{
     struct req_states req;
     struct res_states res;
-};
+}data_u;
 struct connection_t{
     SOCKET client;
     enum STATE state;
     Request * req;
     Response* res;
-    struct data_u data;
+    data_u data;
     struct file_res_states file;
 };
 typedef struct connection_t Connection;
@@ -59,7 +59,7 @@ int parse_status_line(Request* req,StringView line);
 int parse_headers(Connection * conn);
 int build_request(Connection * conn);
 int sendFile(Connection* con);
-int sendResponse(Connection* con);
+int sendResponse(Connection* con,HashTable * cache);
 
 void free_connection(Connection ** con);
 

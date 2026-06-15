@@ -98,7 +98,7 @@ int parse_headers(Connection * conn){
             conn->state = PARSING_BODY;
             break;
         }
-        StringView key = sv_to_lowercase(sv_trim(sv_split(&line,':')));
+        StringView key = sv_trim(sv_split(&line,':'));
         line = sv_trim(line);
         if(sv_eq(key,SV_NULL) || sv_eq(line,SV_NULL))
             continue;
@@ -183,14 +183,28 @@ int build_request(Connection * conn) {
     }
     return 1;
 }
-int sendResponse(Connection * con) {
+int sendResponse(Connection * con,HashTable * cache) {
+    
     if(con->data.res.resp_buf == NULL){
-        int len = 0;
-        char * data;
-        data = responseToString(&len, con->res, con->req->method);
-        if (!data) return ERR_NO_RESPONSE_DATA;
-        con->data.res.total_size = len;
-        con->data.res.resp_buf = data;
+        if(cache !=NULL && con->req->method == GET){
+            StringView sv = get_as_sv(con->req->path,cache);
+            if(!sv_eq(sv,SV_NULL)){
+               con->data.res.resp_buf = sv.data;
+               con->data.res.total_size = sv.count;
+            }else{
+                goto create;
+            }
+        }else{
+        create:
+            int len = 0;
+            char * data;
+            data = responseToString(&len, con->res, con->req->method);
+            if (!data) return ERR_NO_RESPONSE_DATA;
+            con->data.res.total_size = len;
+            con->data.res.resp_buf = data;
+            StringView sv = sv_from_size(data,len);
+            add_sv(con->req->path,&sv,sizeof(StringView),cache,true);
+        }
     }
     
     if(con->data.res.total_size == con->data.res.bytes_sent && con->data.res.total_size > 0){
@@ -213,8 +227,8 @@ int sendResponse(Connection * con) {
         printf("[sendResponse] ret = %d\n", ret);
     }
     if(con->data.res.total_size == con->data.res.bytes_sent){
-        free(con->data.res.resp_buf);
         con->data.res.resp_buf = NULL;
+        con->data.res.total_size = 0;
         con->state = RESPONSE_SENT;
         return 1;
     }
@@ -251,7 +265,7 @@ int sendFile(Connection *con) {
             snprintf(s, sizeof(s), "%d", con->file.total_size);
             add_response_header("content-length", s, con->res);
         }
-        sendResponse(con);
+        sendResponse(con,NULL);
         if(con->state == RESPONSE_SENT){
             con->state = SENDING_FILE;
         }

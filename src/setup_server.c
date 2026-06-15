@@ -1,16 +1,14 @@
 #include "setup_server.h"
 #include "globals.h"
 #include "compat.h"
-
 #include "connection.h"
 #include "request.h"
 #include "response.h"
 #include "routing.h"
 #include <limits.h>
 #include <stdlib.h>
-
+#include <stdatomic.h>
 #include <sys/sysinfo.h> 
-
 #ifdef _WIN32
 	#include <winerror.h>
 #endif
@@ -27,7 +25,9 @@ typedef struct {
     int thread_id;
 } server_worker_arg_t;
 CacheStore FILE_CACHE;
-void handleRequest(Connection *con) {
+
+volatile atomic_int keep_running = 1;
+void handleRequest(Connection *con,HashTable * cache) {
    char not_found[] = "<html>"
                      "<head>"
                      "<title>Not Found</title>"
@@ -35,6 +35,17 @@ void handleRequest(Connection *con) {
                      "<body>404 NOT FOUND!!</body>"
                      "</html>";
     if(con->state != REQUEST_BUILT) return;
+    if(cache!=NULL && con->req->method == GET){
+        StringView content = get_as_sv(con->req->path,cache);
+        if(!sv_eq(content,SV_NULL)){
+               con->data.res.resp_buf = content.data;
+               con->data.res.total_size = content.count;
+               con->state = SENDING_RESPONSE;
+               return;
+            }        
+
+
+    }
     Request * req = con->req;
     const char *method = methods[req->method];
     char req_path[PATH_MAX];
@@ -44,12 +55,12 @@ void handleRequest(Connection *con) {
     memcpy(req_path + PUBLIC_DIR_LEN, req->path.data, req->path.count);
     req_path[req_path_len] = '\0';
     char *r = realpath(req_path, resolved_path);
-        
+    //if(0){  
     if (r != NULL && strncmp(resolved_path, PUBLIC_DIR, PUBLIC_DIR_LEN) == 0 && exists(req_path)) {
         con->state = SENDING_FILE_HEADERS;
         memcpy(con->file.filepath,req_path,req_path_len);
         con->file.filepath[req_path_len] = '\0';
-        //printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
+        printf("%s "SV_Fmt" 200\n", method, SV_Arg(req->path));
   } else {
         con->res = initResponse();
         Response* response = con->res;
@@ -80,9 +91,8 @@ void handleRequest(Connection *con) {
         con->state = SENDING_RESPONSE;
     }
 }
-void handleExit(int signum) {
-  cleanupRoutes();
-  exit(signum);
+void handle_exit(int signo, siginfo_t *info, void *context) {
+    atomic_store(&keep_running,0);
 }
 
 
@@ -141,8 +151,18 @@ int setup_async(SOCKET server_fd){
 
 
 int ev_loop(char* addr,int port) {
-    signal(SIGINT, handleExit);
+    struct sigaction sa;
+    
+    sa.sa_sigaction = handle_exit;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_SIGINFO; 
 
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
+        perror("sigaction failed");
+        return -1;
+    }
+    
+    HashTable * cache = init_table(16);
 
 #ifdef _WIN32
     WSADATA wsaData;
@@ -196,8 +216,8 @@ int ev_loop(char* addr,int port) {
         return -1;
     }
     struct epoll_event events[MAX_EVENTS];
-    while (1) {
-        int n_events = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
+    while (atomic_load(&keep_running)) {
+        int n_events = epoll_wait(epoll_fd, events, MAX_EVENTS,1000);
         if (n_events == -1) {
             print_error("epoll_wait");
             break;
@@ -258,7 +278,7 @@ int ev_loop(char* addr,int port) {
                             }
                         }
                         if(con->state == REQUEST_BUILT){
-                            handleRequest(con);
+                            handleRequest(con,cache);
                             event.events = CONN_WRITE_FLAGS;
                             if(epoll_ctl(epoll_fd,EPOLL_CTL_MOD,con->client,&event) == -1){
                                     print_error("epoll_ctl: client_fd");
@@ -280,7 +300,7 @@ int ev_loop(char* addr,int port) {
                             e = sendFile(con);    
                         }
                         if(con->state == SENDING_RESPONSE){
-                            e = sendResponse(con);
+                            e = sendResponse(con,cache);
                         }
                         if (e == 0) {
                                 event.events = CONN_WRITE_FLAGS;
@@ -288,6 +308,7 @@ int ev_loop(char* addr,int port) {
                             }
                         if(con->state == RESPONSE_SENT){
                             freeRequest(&con->req);
+                            if(con->res !=NULL)
                             freeResponse(&con->res);
                             con->data.req.pos = 0;
                             con->data.res.total_size = 0;
@@ -307,6 +328,28 @@ int ev_loop(char* addr,int port) {
             }         
         }
     }
+    if (!cache)
+        return 0;
+    if (cache->entries != NULL) {
+        for (int i = 0; i < cache->capacity; i++) {
+            HashEntry *current = cache->entries[i];
+            while (current != NULL) {
+                HashEntry *temp = current;
+                current = current->next;
+                if(temp->owns_key)
+                    free(temp->key.data);
+                temp->key.count = 0;
+                temp->key.data = NULL;
+                free(((StringView *)temp->value)->data);
+                free(temp->value);
+                free(temp);
+            }
+        }
+    }
+    free(cache->entries);
+    free(cache);
+    cache = NULL;
+
 #ifdef _WIN32
         WSACleanup();
 #endif
@@ -322,18 +365,17 @@ void* server_thread_worker(void* arg) {
 }
 
 int startServer(char *addr, int port) {
+    printf("Connection %d\n",sizeof(Connection));
     FILE_CACHE = init_cache_store();
     int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
     printf("Detected %d CPU cores. Spawning workers...\n", num_cores);
 
     pthread_t threads[num_cores];
     server_worker_arg_t args[num_cores];
-
     for (int i = 0; i < num_cores; i++) {
         args[i].addr = addr;
         args[i].port = port;
         args[i].thread_id = i;
-
         if (pthread_create(&threads[i], NULL, server_thread_worker, &args[i]) != 0) {
             perror("Failed to create thread");
             return -1;
@@ -344,8 +386,8 @@ int startServer(char *addr, int port) {
     for (int i = 0; i < num_cores; i++) {
         pthread_join(threads[i], NULL);
     }   
-
     free_cache_items(&FILE_CACHE);
+    cleanupRoutes();
     return 0;
 }
 
