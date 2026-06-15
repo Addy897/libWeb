@@ -6,8 +6,9 @@ static unsigned int hash_sv(StringView sv, HashTable *table) {
     unsigned long hash = 5381;
     int i = 0;
     while (i < sv.count) {
-        // hash = hash*33 + key[i]
-        hash = ((hash << 5) + hash) + sv.data[i];
+        unsigned char c = sv.data[i] | 0x20;
+        // hash = hash*33 + c
+        hash = ((hash << 5) + hash) + c;;
         i++;
     }
     return hash % table->capacity;
@@ -61,7 +62,7 @@ HashEntry *get_entry_sv(StringView sv, HashTable *table, unsigned int hashval) {
         return NULL;
     HashEntry *entry = table->entries[hashval];
     while (entry != NULL) {
-        if (sv_eq(entry->key,sv)) {
+        if (sv_eq_ignorecase(entry->key,sv)) {
             break;
         }
         entry = entry->next;
@@ -101,9 +102,11 @@ void remove_key_sv(StringView key, HashTable *table) {
 void add_sv(StringView sv, const void *value, int val_size, HashTable *table,bool deep_copy_key) {
     if (table == NULL || table->entries == NULL)
         return;
-
+    if (table->entry_count * 10 >= 7 * table->capacity)
+            grow_table(table);
     unsigned int hashval = hash_sv(sv, table);
     HashEntry *entry = get_entry_sv(sv, table, hashval);
+    
     if (entry == NULL) {
         entry = malloc(sizeof(HashEntry));
         entry->next = NULL;
@@ -117,8 +120,7 @@ void add_sv(StringView sv, const void *value, int val_size, HashTable *table,boo
         entry->next = table->entries[hashval];
         table->entries[hashval] = entry;
         table->entry_count++;
-        if (load_factor(table) >= 0.7)
-            grow_table(table);
+        
     } else {
        void *tmp = malloc(val_size);
        if (!tmp)
