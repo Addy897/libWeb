@@ -24,7 +24,7 @@ typedef struct {
     int port;
     int thread_id;
 } server_worker_arg_t;
-CacheStore FILE_CACHE;
+__thread CacheStore FILE_CACHE;
 
 volatile atomic_int keep_running = 1;
 void handleRequest(Connection *con,HashTable * cache) {

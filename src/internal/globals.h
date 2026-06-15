@@ -17,5 +17,5 @@ static const char *methods[] = {
 
 extern char PUBLIC_DIR[PATH_MAX];
 extern size_t PUBLIC_DIR_LEN;
-extern CacheStore FILE_CACHE;
+extern __thread CacheStore FILE_CACHE;
 #endif
