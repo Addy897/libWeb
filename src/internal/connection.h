@@ -46,11 +46,15 @@ typedef struct data_u{
 }data_u;
 struct connection_t{
     SOCKET client;
+    int index;
+    bool is_free;
     enum STATE state;
     Request * req;
     Response* res;
     data_u data;
+    
     struct file_res_states file;
+    
 };
 typedef struct connection_t Connection;
 

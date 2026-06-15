@@ -15,6 +15,7 @@ Connection * init_connection(){
 void free_connection(Connection ** con){
     if(*con == NULL) return;
     Connection * conn = *con;
+    if(conn->client !=-1)
     closesocket(conn->client);
     if(conn->req){
         freeRequest(&conn->req);

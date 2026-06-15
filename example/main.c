@@ -11,11 +11,10 @@ void indexPost(Request *req, Response *res) {
   }
   add_response_header("content-type", "application/json", res);
   StringView ct = get_response_header("content-type",res);
-  if(!sv_eq(ct,SV_NULL))
-    printf("CT: "SV_Fmt"\n",SV_Arg(ct));
   
 }
 int main(int argc, char const *argv[]) {
+
 
  // int init = initializeSocket();
  // if (init == -1) {

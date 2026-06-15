@@ -1,6 +1,8 @@
 *.o
 __pycache__
 main
+Web
+perf*
 benchmark_result.txt
 app
 test.*

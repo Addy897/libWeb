@@ -21,7 +21,7 @@ SRCS = mime_types.c routing.c helper.c setup_server.c connection.c request.c res
 
 OBJS = $(SRCS:%.c=$(OUT_DIR)/%.o)
 
-CFLAGS = -I$(PUBLIC_INC) -I$(PRIVATE_INC) -ggdb -O2 -fno-omit-frame-pointer -pthread -Wno-discarded-qualifiers
+CFLAGS = -I$(PUBLIC_INC) -I$(PRIVATE_INC) -ggdb -O3 -fno-omit-frame-pointer -pthread -Wno-discarded-qualifiers
 LIB_PATH = -L$(OUT_DIR) -lWeb
 
 
@@ -41,7 +41,8 @@ install: $(OUT_DIR)/$(LIB)
 $(OUT_DIR)/$(LIB): $(OBJS)
 	mkdir -p $(OUT_DIR)
 	ar rcs $(OUT_DIR)/$(LIB) $(OBJS)
-example: $(EXAMPLE_DIR)/main.c $(OUT_DIR)/$(LIB)
+.PHONY: example
+example:$(EXAMPLE_DIR)/main.c $(OUT_DIR)/$(LIB)
 	$(CC) $(CFLAGS) $(EXAMPLE_DIR)/main.c $(LIB_PATH) $(LIBS) -o $(EXAMPLE_DIR)/main$(EXEC_EXT)
 .PHONY: clean
 clean:
