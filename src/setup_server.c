@@ -17,7 +17,7 @@
 #define MAXCONN 8192
 #define MAX_SIZE 8192
 
-#define MAX_WORKERS 15
+#define MAX_WORKERS 16
 
 
 #define BUFF_SIZE 1024
@@ -27,7 +27,7 @@
 SOCKET server = INVALID_SOCKET;
 int master_exit_fd;
 
-CacheStore FILE_CACHE;
+__thread CacheStore FILE_CACHE;
 
 
 
@@ -106,8 +106,8 @@ void handleRequest(Connection *con,HashTable * cache) {
                      "<body>404 NOT FOUND!!</body>"
                      "</html>";
     if(con->state != REQUEST_BUILT) return;
-    if(cache!=NULL && con->req->method == GET){
-        StringView content = get_as_sv(con->req->path,cache);
+    if(cache!=NULL && con->req.method == GET){
+        StringView content = get_as_sv(con->req.path,cache);
         if(!sv_eq(content,SV_NULL)){
                con->data.res.resp_buf = content.data;
                con->data.res.total_size = content.count;
@@ -117,7 +117,7 @@ void handleRequest(Connection *con,HashTable * cache) {
 
 
     }
-    Request * req = con->req;
+    Request * req = &con->req;
     const char *method = methods[req->method];
     char req_path[PATH_MAX];
     char resolved_path[PATH_MAX];
@@ -228,9 +228,6 @@ int setup_async(SOCKET server_fd){
 static inline int handle_read(struct epoll_event event,HashTable* cache, int epoll_fd){
     Connection* con = (Connection*)event.data.ptr;
     if(con->state != REQUEST_BUILT){
-        if(con->req == NULL){
-            con->req = initRequest();
-        }
         int e = build_request(con);
         if(e == ERR_CONTENT_TOO_LARGE){
             event.events = CONN_WRITE_FLAGS;
@@ -245,7 +242,6 @@ static inline int handle_read(struct epoll_event event,HashTable* cache, int epo
             epoll_ctl(epoll_fd, EPOLL_CTL_MOD, con->client, &event);
         }else if(e<0){
             epoll_ctl(epoll_fd,EPOLL_CTL_DEL,con->client,&event);
-            free_connection(&con); 
             return 0;
         }
     }
@@ -277,7 +273,10 @@ static inline int handle_write(struct epoll_event event,HashTable * cache ,int e
             return 0;
         }
     if(con->state == RESPONSE_SENT){
-        freeRequest(&con->req);
+        con->req.path = SV_NULL;
+        con->req.version = SV_NULL;
+        con->req.headers.count = 0;
+        con->req.query_params.count = 0;
         if(con->res !=NULL)
         freeResponse(&con->res);
         con->data.req.pos = 0;
@@ -464,9 +463,11 @@ int ev_loop(int worker_id) {
 }
 void* worker_thread(void* arg) {
     
+    FILE_CACHE = init_cache_store();
     worker_arg_t *config = (worker_arg_t*)arg;
     printf("Worker thread %d is starting....\n", config->worker_id);
     ev_loop(config->worker_id);
+    free_cache_items(&FILE_CACHE);
     return NULL;
 }
 
@@ -589,7 +590,6 @@ void* master_thread(void * arg){
 
 int startServer(char *addr, int port) {
     printf("Connection %d\n",sizeof(Connection));
-    FILE_CACHE = init_cache_store();
     int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
     printf("Detected %d CPU cores. Spawning workers...\n", num_cores);
     pthread_t threads[MAX_WORKERS+1];
@@ -620,7 +620,6 @@ int startServer(char *addr, int port) {
     for (int i = 0; i < MAX_WORKERS+1; i++) {
         pthread_join(threads[i], NULL);
     }   
-    free_cache_items(&FILE_CACHE);
     return 0;
 }
 

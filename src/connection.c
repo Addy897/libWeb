@@ -17,9 +17,9 @@ void free_connection(Connection ** con){
     Connection * conn = *con;
     if(conn->client !=-1)
     closesocket(conn->client);
-    if(conn->req){
-        freeRequest(&conn->req);
-    }
+    //if(conn->req){
+    //    freeRequest(&conn->req);
+    //}
     if(conn->res){
         freeResponse(&conn->res);
     }
@@ -61,11 +61,11 @@ int parse_status_line(Request* req,StringView line){
     req->version = version;
     token = sv_trim(sv_split(&req_target,'?'));
     req->path = token;
-    HashTable * queries;
-    if(!sv_eq(req_target,SV_NULL)){
-        queries = init_table(16);
-        req->query_params = queries;
-    }
+    //HashTable * queries;
+    //if(!sv_eq(req_target,SV_NULL)){
+    //    queries = init_table(16);
+    //    req->query_params = queries;
+    //}
     while (!sv_eq(req_target,SV_NULL)) {
         StringView query = sv_split(&req_target,'&');
         StringView key = sv_split(&query, '=');
@@ -73,26 +73,29 @@ int parse_status_line(Request* req,StringView line){
         query= sv_trim(query);
         if (sv_eq(key,SV_NULL) || sv_eq(query,SV_NULL))
             continue;
-        add_sv(key,&query,sizeof(StringView),queries,false);
+        req->query_params.items[req->query_params.count++].key = key;
+        req->query_params.items[req->query_params.count].value = query;
+        //add_sv(key,&query,sizeof(StringView),queries,false);
     }
     return 1;
 }
 
 int parse_headers(Connection * conn){
     StringView saved_ptr = sv_from_size(conn->data.req.buf,conn->data.req.pos);
-    if(sv_eq(conn->req->path,SV_NULL)){
+    if(sv_eq(conn->req.path,SV_NULL)){
         StringView line = sv_split(&saved_ptr,'\n');
         if(sv_eq(saved_ptr,SV_NULL)){
             printf("Line is empty %s \n",saved_ptr);
             return ERR_PARSING_FAILED;
         }
-        if(parse_status_line(conn->req,line) <0){
+        if(parse_status_line(&conn->req,line) <0){
             return ERR_PARSING_FAILED;
         }
     }
-    if(conn->req->headers == NULL){
-        conn->req->headers = init_table(16);
-    }
+    
+   // if(conn->req->headers == NULL){
+   //     conn->req->headers = init_table(16);
+   // }
     while (!sv_eq(saved_ptr,SV_NULL)) {
         StringView line = sv_split(&saved_ptr,'\n');
         if(sv_is_empty(line)){
@@ -104,7 +107,8 @@ int parse_headers(Connection * conn){
         if(sv_eq(key,SV_NULL) || sv_eq(line,SV_NULL))
             continue;
        
-        add_sv(key, &line, sizeof(StringView), conn->req->headers,false);
+        conn->req.headers.items[conn->req.headers.count++] = (Header){.key = key,.value = line};
+        //add_sv(key, &line, sizeof(StringView), conn->req->headers,false);
     }
     conn->state = PARSING_BODY;
     return 0;
@@ -112,7 +116,7 @@ int parse_headers(Connection * conn){
 }
 
 int build_request(Connection * conn) {
-    if (conn == NULL || conn->req == NULL || conn->client == 0){
+    if (conn == NULL || conn->client == 0){
         return 0;
     }
     if(conn->state == REQUEST_BUILT){
@@ -142,7 +146,7 @@ int build_request(Connection * conn) {
         }
         if(conn->state == PARSING_BODY){
             //RAW COPY FOR NOW
-            StringView content_string = get_as_sv_s("content-length", conn->req->headers);
+            StringView content_string = get_request_header_sv(sv_from_cltr("content-length"), &conn->req);
             if (!sv_eq(content_string,SV_NULL)) {
                 int content_size = sv_to_int(content_string);
                 if(content_size<0 || content_size >=MAX_CONTENT_SIZE){
@@ -152,15 +156,15 @@ int build_request(Connection * conn) {
                     set_response_body_sv(sv_from_cltr("Content Too Large"), conn->res);
                     return ERR_CONTENT_TOO_LARGE; 
                 }
-               if(conn->req->body.count < content_size){ 
-                   if (sv_eq(conn->req->body,SV_NULL)) {
-                      conn->req->body = sv_from_size(conn->data.req.buf,conn->data.req.pos);
-                      StringView temp = sv_split_sv(&conn->req->body,sv_from_cltr("\r\n\r\n")); 
+               if(conn->req.body.count < content_size){ 
+                   if (sv_eq(conn->req.body,SV_NULL)) {
+                      conn->req.body = sv_from_size(conn->data.req.buf,conn->data.req.pos);
+                      StringView temp = sv_split_sv(&conn->req.body,sv_from_cltr("\r\n\r\n")); 
                     } else {
-                        if(conn->data.req.buf + conn->data.req.pos > conn->req->body.data + conn->req->body.count) 
-                            conn->req->body.count += bytes_read;
+                        if(conn->data.req.buf + conn->data.req.pos > conn->req.body.data + conn->req.body.count) 
+                            conn->req.body.count += bytes_read;
                     }
-                    if (conn->req->body.count >= content_size) {
+                    if (conn->req.body.count >= content_size) {
                         conn->state = REQUEST_BUILT;
                         return 1;
                     }
@@ -187,8 +191,8 @@ int build_request(Connection * conn) {
 int sendResponse(Connection * con,HashTable * cache) {
     
     if(con->data.res.resp_buf == NULL){
-        if(cache !=NULL && con->req->method == GET){
-            StringView sv = get_as_sv(con->req->path,cache);
+        if(cache !=NULL && con->req.method == GET){
+            StringView sv = get_as_sv(con->req.path,cache);
             if(!sv_eq(sv,SV_NULL)){
                con->data.res.resp_buf = sv.data;
                con->data.res.total_size = sv.count;
@@ -199,12 +203,12 @@ int sendResponse(Connection * con,HashTable * cache) {
         create:
             int len = 0;
             char * data;
-            data = responseToString(&len, con->res, con->req->method);
+            data = responseToString(&len, con->res, con->req.method);
             if (!data) return ERR_NO_RESPONSE_DATA;
             con->data.res.total_size = len;
             con->data.res.resp_buf = data;
             StringView sv = sv_from_size(data,len);
-            add_sv(con->req->path,&sv,sizeof(StringView),cache,true);
+            add_sv(con->req.path,&sv,sizeof(StringView),cache,true);
         }
     }
     

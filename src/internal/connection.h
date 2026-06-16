@@ -49,7 +49,7 @@ struct connection_t{
     int index;
     bool is_free;
     enum STATE state;
-    Request * req;
+    Request  req;
     Response* res;
     data_u data;
     

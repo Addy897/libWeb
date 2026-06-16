@@ -18,13 +18,26 @@ typedef struct HashTable HashTable;
 #define MAX_CONTENT_SIZE (10 * 1024 * 1024)
 
 typedef enum { GET = 0, POST = 1, HEAD = 2, OPTIONS = 3 } Method;
+
+typedef struct {
+    StringView key;
+    StringView value;
+}Header;
+
+typedef struct {
+    Header items[16];
+    int count;
+}HeadersList;
+
+
+
 typedef struct {
   Method method;
   StringView version;
   StringView path;
   StringView body;
-  HashTable *headers;
-  HashTable *query_params;
+  HeadersList headers;
+  HeadersList query_params;
 } Request;
 
 Request *initRequest();

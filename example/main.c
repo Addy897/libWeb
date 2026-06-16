@@ -10,7 +10,6 @@ void indexPost(Request *req, Response *res) {
     set_response_body("{\"result\":\"Sucess\"}", res);
   }
   add_response_header("content-type", "application/json", res);
-  StringView ct = get_response_header("content-type",res);
   
 }
 int main(int argc, char const *argv[]) {
