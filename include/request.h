@@ -14,7 +14,7 @@ typedef int SOCKET;
 
 typedef struct HashTable HashTable;
 
-
+#define MAX_HEADERS 16
 #define MAX_CONTENT_SIZE (10 * 1024 * 1024)
 
 typedef enum { GET = 0, POST = 1, HEAD = 2, OPTIONS = 3 } Method;
@@ -25,7 +25,7 @@ typedef struct {
 }Header;
 
 typedef struct {
-    Header items[16];
+    Header items[MAX_HEADERS];
     int count;
 }HeadersList;
 
@@ -37,13 +37,15 @@ typedef struct {
   StringView path;
   StringView body;
   HeadersList headers;
+  HeadersList cookies;
   HeadersList query_params;
 } Request;
 
 Request *initRequest();
 
-#define get_request_params(name, request) get_request_header(name, request)
+StringView get_request_param_sv(StringView name, Request *req);
 StringView get_request_header(char *name, Request* req);
 StringView get_request_header_sv(StringView name, Request * req);
+StringView get_request_cookie_sv(StringView name, Request * req);
 void freeRequest(Request **req);
 #endif

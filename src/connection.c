@@ -79,7 +79,24 @@ int parse_status_line(Request* req,StringView line){
     }
     return 1;
 }
-
+int parse_cookies(Request* req){
+    StringView cookies = get_request_header_sv(sv_from_cltr("cookie"),req);
+    if(sv_eq(cookies,SV_NULL)){
+        return 1;
+    } 
+    while (!sv_eq(cookies,SV_NULL)) {
+        StringView line = sv_split(&cookies,';');
+        if(sv_is_empty(line)){
+            break;
+        }
+        StringView key = sv_split(&line,'=');
+        if(sv_eq(key,SV_NULL) || sv_eq(line,SV_NULL))
+            continue;
+       
+        req->cookies.items[req->cookies.count++] = (Header){.key = key,.value = line};
+        //add_sv(key, &line, sizeof(StringView), conn->req->headers,false);
+    }
+}
 int parse_headers(Connection * conn){
     StringView saved_ptr = sv_from_size(conn->data.req.buf,conn->data.req.pos);
     if(sv_eq(conn->req.path,SV_NULL)){
@@ -110,6 +127,7 @@ int parse_headers(Connection * conn){
         conn->req.headers.items[conn->req.headers.count++] = (Header){.key = key,.value = line};
         //add_sv(key, &line, sizeof(StringView), conn->req->headers,false);
     }
+    parse_cookies(&conn->req);
     conn->state = PARSING_BODY;
     return 0;
 

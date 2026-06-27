@@ -5,14 +5,34 @@
 #include <stdlib.h>
 #include <string.h>
 
-Request *initRequest() {
-  Request *req = calloc(1, sizeof(Request));
-  req->body = SV_NULL;
-  //req->headers = NULL;
-  //req->query_params = NULL;
-  req->path =SV_NULL;
-  return req;
+//Request *initRequest() {
+//  Request *req = calloc(1, sizeof(Request));
+//  req->body = SV_NULL;
+//  //req->headers = NULL;
+//  //req->query_params = NULL;
+//  req->path =SV_NULL;
+//  return req;
+//}
+
+StringView get_request_param_sv(StringView key, Request *req) {
+  for(int i = 0;i < req->query_params.count;i++){
+        Header query  = req->query_params.items[i];
+        if(sv_eq_ignorecase(key,query.key)){
+            return query.value;
+        }
+  }
+ return SV_NULL;
 }
+StringView get_request_cookie_sv(StringView key, Request *req) {
+  for(int i = 0;i < req->cookies.count;i++){
+        Header cookie  = req->cookies.items[i];
+        if(sv_eq_ignorecase(key,cookie.key)){
+            return cookie.value;
+        }
+  }
+ return SV_NULL;
+}
+
 StringView get_request_header(char *name, Request *req) {
   StringView key = sv_from_cstr(name);
   for(int i = 0;i < req->headers.count;i++){
@@ -33,11 +53,11 @@ StringView get_request_header_sv(StringView key, Request *req) {
     return SV_NULL;
     // return get_as_sv(name, req->headers);
 }
-void freeRequest(Request **req) {
-  if (!req || !*req)
-    return;
-  //free_table(&(*req)->headers);
-  //free_table(&(*req)->query_params);
-  free(*req);
-  *req = NULL;
-}
+//void freeRequest(Request **req) {
+//  if (!req || !*req)
+//    return;
+//  //free_table(&(*req)->headers);
+//  //free_table(&(*req)->query_params);
+//  free(*req);
+//  *req = NULL;
+//}
