@@ -225,8 +225,10 @@ int sendResponse(Connection * con,HashTable * cache) {
             if (!data) return ERR_NO_RESPONSE_DATA;
             con->data.res.total_size = len;
             con->data.res.resp_buf = data;
-            StringView sv = sv_from_size(data,len);
-            add_sv(con->req.path,&sv,sizeof(StringView),cache,true);
+            if(con->req.method == GET){
+                StringView sv = sv_from_size(data,len);
+                add_sv(con->req.path,&sv,sizeof(StringView),cache,true);
+            }
         }
     }
     
