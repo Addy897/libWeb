@@ -46,7 +46,7 @@ StringView get_request_header(char *name, Request *req) {
 StringView get_request_header_sv(StringView key, Request *req) {
     for(int i = 0;i < req->headers.count;i++){
         Header header = req->headers.items[i];
-        if(sv_eq(key,header.key)){
+        if(sv_eq_ignorecase(key,header.key)){
             return header.value;
         }
     }

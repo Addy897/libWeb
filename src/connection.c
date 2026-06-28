@@ -164,7 +164,7 @@ int build_request(Connection * conn) {
         }
         if(conn->state == PARSING_BODY){
             //RAW COPY FOR NOW
-            StringView content_string = get_request_header_sv(sv_from_cltr("content-length"), &conn->req);
+            StringView content_string = get_request_header_sv(sv_from_cltr("Content-Length"), &conn->req);
             if (!sv_eq(content_string,SV_NULL)) {
                 int content_size = sv_to_int(content_string);
                 if(content_size<0 || content_size >=MAX_CONTENT_SIZE){

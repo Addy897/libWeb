@@ -14,7 +14,7 @@ typedef int SOCKET;
 
 typedef struct HashTable HashTable;
 
-#define MAX_HEADERS 16
+#define MAX_HEADERS 32
 #define MAX_CONTENT_SIZE (10 * 1024 * 1024)
 
 typedef enum { GET = 0, POST = 1, HEAD = 2, OPTIONS = 3 } Method;
