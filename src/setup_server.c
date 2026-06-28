@@ -14,10 +14,10 @@
 	#include <winerror.h>
 #endif
 
-#define MAXCONN 8192
-#define MAX_SIZE 8192
+#define MAXCONN 1024
+#define MAX_SIZE 1024
 
-#define MAX_WORKERS 16
+#define MAX_WORKERS 4
 
 
 #define BUFF_SIZE 1024
@@ -274,6 +274,7 @@ static inline int handle_write(struct epoll_event event,HashTable * cache ,int e
         }
     if(con->state == RESPONSE_SENT){
         con->req.path = SV_NULL;
+        con->req.body = SV_NULL;
         con->req.version = SV_NULL;
         con->req.headers.count = 0;
         con->req.query_params.count = 0;
@@ -370,6 +371,7 @@ int ev_loop(int worker_id) {
    while (atomic_load(&keep_running)) {
         int n_events = epoll_wait(epoll_fd, events, MAX_EVENTS,-1);
         if (n_events == -1) {
+            if (errno == EINTR) continue;
             print_error("epoll_wait");
             break;
         }
@@ -396,6 +398,7 @@ int ev_loop(int worker_id) {
                 if(e == -1){
                     int removed = con->index;
                     Connection *moved = active_cons[--active_count];
+                    moved->req.body = SV_NULL;
                     active_cons[removed] = moved;
                     moved->index = removed;
                     closed_cons[closed_count++] = con;                 
@@ -411,6 +414,7 @@ int ev_loop(int worker_id) {
                 con->client = -1;
                 int removed = con->index;
                 Connection *moved = active_cons[--active_count];
+                moved->req.body = SV_NULL;
                 active_cons[removed] = moved;
                 moved->index = removed;
                 closed_cons[closed_count++] = con;
@@ -421,6 +425,7 @@ int ev_loop(int worker_id) {
                 if(e == -1){
                     int removed = con->index;
                     Connection *moved = active_cons[--active_count];
+                    moved->req.body = SV_NULL;
                     active_cons[removed] = moved;
                     moved->index = removed;
                     closed_cons[closed_count++] = con;
@@ -546,6 +551,7 @@ void* master_thread(void * arg){
     while (atomic_load(&keep_running)) {
         int n_events = epoll_wait(epoll_fd, events, MAX_EVENTS,-1);
         if (n_events == -1) {
+            if (errno == EINTR) continue;
             print_error("epoll_wait");
             break;
         }
