@@ -162,7 +162,7 @@ void handleRequest(Connection *con,HashTable * cache) {
         con->state = SENDING_RESPONSE;
     }
 }
-void handle_exit(int signo, siginfo_t *info, void *context) {
+void handle_exit(int signo) {
     atomic_store(&keep_running,0);
     for( int i=0;i<MAX_WORKERS;i++){
         uint64_t wake = 1; 
@@ -338,15 +338,17 @@ static inline void consume_fds(int epoll_fd,Connection ** active_con,int * activ
 int ev_loop(int worker_id) {
     struct sigaction sa;
     
-    sa.sa_sigaction = handle_exit;
+    sa.sa_handler = handle_exit;
+    sa.sa_flags = 0; 
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_SIGINFO; 
-
     if (sigaction(SIGINT, &sa, NULL) == -1) {
         perror("sigaction failed");
         return -1;
     }
-    
+    if (sigaction(SIGTERM, &sa, NULL) == -1) {
+        perror("sigaction failed");
+        return -1;
+    }
    HashTable * cache = init_table(16);
     int epoll_fd = epoll_create1(0);
     if (epoll_fd == -1) {
@@ -479,15 +481,18 @@ void* worker_thread(void* arg) {
 
 void* master_thread(void * arg){
     struct sigaction sa;
-    sa.sa_sigaction = handle_exit;
+    sa.sa_handler = handle_exit;
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_SIGINFO; 
+    sa.sa_flags = 0; 
 
     if (sigaction(SIGINT, &sa, NULL) == -1) {
         perror("sigaction failed");
         return NULL;
     }
-
+    if (sigaction(SIGTERM, &sa, NULL) == -1) {
+        perror("sigaction failed");
+        return NULL;
+    }
     master_arg_t *config = (master_arg_t*)arg;
     char* addr= config->addr;
     int port = config->port;
